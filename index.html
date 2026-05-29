@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mi Ficha de Personaje</title>
+    
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #eaddc5; /* Un color tipo pergamino */
+            padding: 20px;
+        }
+        .layout-principal {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+
+            gap: 20px;
+
+            align-items: start;
+        }  
+        .columna-izquierda,
+        .columna-derecha {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        /* //////////////////// Filas y cajas de estadísticas //////////////////// */
+        .fila-stats {
+            display: grid; /* Activamos el superpoder de cuadrícula */
+            grid-template-columns: repeat(6, minmax(40px, 100px)); /* Crea exactamente 6 columnas del mismo ancho (1 fracción) */
+            justify-content: center; /* Centra las columnas horizontalmente */
+            gap: 5px; 
+            padding: 10px; /* Espacio entre esta fila y la siguiente */
+            border-bottom: 2px solid #5a4035; /* Espacio entre esta fila y la siguiente */
+        }
+        .fila-extra {
+            display: flex; /* Cambiamos Grid por Flexbox para que fluya como el agua */
+            flex-wrap: wrap; /* Permite que las cajas caigan si no caben en la pantalla */
+            justify-content: center; /* ¡Solución al Error 2! Centra siempre las cajas sin importar cuántas sean */
+            gap: 5px; 
+            width: 100%;
+            margin-top: 20px; /* ¡Solución al Error 1! Crea una separación invisible de 20px arriba */
+        }
+
+        /* 2. Un truco nuevo: Le damos ancho solo a las cajas de esta fila */
+        .fila-extra .caja-stat {
+            /* Como Flexbox no tiene el minmax() de Grid, le decimos nosotros el tamaño */
+            min-width: 100px; 
+            max-width: 120px;
+            flex: 1; /* Permite que crezcan un poco para compartir el espacio */
+        }
+        @media (max-width: 900px) {
+            
+            .fila-stats {
+                /* Cambiamos la regla: ahora serán 3 columnas por fila */
+                grid-template-columns: repeat(3, minmax(40px, 100px)); 
+            }
+            
+            /* De paso, hacemos el texto y los espacios más pequeños para que luzca perfecto en el celular */
+            .caja-stat {
+                padding: 5px; 
+            }
+            .titulo-stat {
+                font-size: 10px; 
+            }
+            .valor-stat {
+                font-size: 24px; 
+                margin: 5px 0;
+            }
+            .layout-principal {
+                grid-template-columns: repeat(1, 1fr);
+            }
+
+        }
+        /* //////////////////// Paneles gigantes (Personaje, Estadísticas, Vida) //////////////////// */
+        .panel-estadisticas {
+            background-color: #f9f2e8; /* Un color más claro para el panel */
+            border-radius: 15px;
+            padding: 20px;/* Espacio para que las cajas no toquen los bordes */
+            margin: 0 auto; /* Centra todo el panel gigante en el medio de la pantalla */
+            margin-bottom: 10px;
+            width: 100%; /* Evita que el panel se estire infinitamente */
+            text-align: center; /* Centra el texto dentro del panel */
+        }
+        .panel-vida {
+            background-color: #f9f2e8; /* Un color más claro para el panel */
+            border-radius: 15px;
+            padding: 20px;/* Espacio para que las cajas no toquen los bordes */
+            margin: 0 auto; /* Centra todo el panel gigante en el medio de la pantalla */
+            width: 100%; /* Evita que el panel se estire infinitamente */
+            text-align: center; /* Centra el texto dentro del panel */
+        }
+        .panel-Personaje {
+            background-color: #f9f2e8; /* Un color más claro para el panel */
+            border-radius: 15px;
+            padding: 20px;/* Espacio para que las cajas no toquen los bordes */
+            margin: 0 auto;
+            margin-bottom: 10px; /* Centra todo el panel gigante en el medio de la pantalla */
+            width: 100%; /* Evita que el panel se estire infinitamente */
+            text-align: left; /* Centra el texto dentro del panel */
+        }
+        .panel-ventanas {
+            background-color: #f9f2e8; /* Un color más claro para el panel */
+            border-radius: 15px;
+            padding: 20px;/* Espacio para que las cajas no toquen los bordes */
+            margin: 0 auto; /* Centra todo el panel gigante en el medio de la pantalla */
+            margin-top: -100px;
+            width: 100%; /* Evita que el panel se estire infinitamente */
+            text-align: center; /* Centra el texto dentro del panel */
+        }
+        /* //////////////////// Cajas de estadísticas (FUE, DES, CON, etc.) //////////////////// */
+        .caja-stat {
+            border: 2px solid #c7a89a; /* Borde oscuro */
+            border-radius: 10px; /* Bordes redondeados */
+            background-color: white; /* Fondo blanco */
+            text-align: center; /* Todo el texto centrado */
+            padding: 5px; /* Espacio adentro de la caja */
+        }
+
+        .titulo-panel {
+            margin-top: 0;
+            color: #5a4035;
+            border-bottom: 2px solid #5a4035;
+            padding-bottom: 10px;
+            font-family: Georgia, serif;
+        }
+        /* Letra pequeña para el título (Fuerza) */
+        .titulo-stat {
+            font-size: 10px;
+            font-weight: bold;
+            margin: 0;
+            text-transform: uppercase;
+
+            min-height: 22px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .Info-personaje {
+            font-size: 12px;
+            font-weight: bold;
+            color: #916a59;
+            margin: -10px 0; 
+            text-transform: uppercase;
+        }
+        /* Letra gigante para el número principal (16) */
+        .modificador-stat {
+            font-size: 26px;
+            margin: 10px 0; /* Espacio arriba y abajo */
+        }
+
+        /* Letra mediana con una línea arriba para el modificador (+3) */
+        .valor-stat {
+            font-size: 10px;
+            border-top: 1px solid #ccc; /* La línea separadora */
+            padding-top: 5px;
+            margin: 0;
+        }
+                .clickable {
+            cursor: pointer;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+        }
+
+        /* /////////// Caja Barra de Vida /////////////*/
+        .vida-contenedor {
+            border: 2px solid #c7a89a; /* Borde oscuro */
+            border-radius: 10px; /* Bordes redondeados */
+            background-color: white; /* Fondo blanco */
+            text-align: center; /* Todo el texto centrado */
+            padding: 10px;
+        }
+        .vida-grid {
+            display: grid;
+            grid-template-columns: 1.6fr 1fr; /* Dos columnas iguales */
+            gap: 18px; /* Espacio entre las columnas */
+            align-items: start;
+        }
+        .vida-info {
+            display: grid;
+            gap: 8px;
+        }
+        .vida-info #hpResumen {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #5a4035;
+            margin: 0;
+        }
+        .vida-temporales {
+            font-size: 0.95rem;
+            color: #6b5a53;
+            margin: 0;
+        }
+        .vida-controles {
+            display: grid;
+            gap: 10px;
+            text-align: right;
+        }
+        .vida-controles label {
+            display: block;
+            font-size: 1.3rem;
+            color: #5a4035;
+            margin-bottom: 4px;
+        }
+        .vida-controles input[type="number"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #c7a89a;
+            border-radius: 10px;
+            background-color: white;
+            color: #333;
+        }
+        /* ////////////// Botones de Curación, Daño y PG temporales ////////// */
+        .botones-vida {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        .botones-vida button {
+            flex: 1 1 auto;
+            min-width: 100px;
+            padding: 10px 12px;
+            border: none;
+            border-radius: 10px;
+            background: #5a4035;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.18s ease;
+        }
+        .botones-vida button:hover {
+            background-color: #7a5c43;
+        }
+        .chk-inspiracion {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            color: #5a4035;
+            margin-top: 6px;
+        }
+        .chk-inspiracion input {
+            width: 18px;
+            height: 18px;
+            border: 1px solid #c7a89a;
+            border-radius: 4px;
+            background-color: white;
+            cursor: pointer;
+        }
+        .vida-barra {
+            margin-top: 18px;
+        }
+        .barra-fondo {
+            position: relative;
+            width: 100%;
+            height: 24px;
+            background-color: #ddd;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .barra-azul,
+        .barra-roja {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            border-radius: 14px;
+            transition: width 0.25s ease;
+        }
+        .barra-azul {
+            background: #4c7ea8;
+            opacity: 0.9;
+            z-index: 1;
+        }
+
+        .barra-roja {
+            background: #c84444;
+            z-index: 2;
+        }
+
+        .oculto {
+            display: none;
+        }
+        /* //////////////// Ventanas ////////////////// */
+        .fila-ventanas {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(80px, 150px));
+            justify-content: center;
+        }
+        .fila-ventanas button {
+            border-radius: 10px;
+            border: none;
+            background: #bea98d;
+            text-align: center;
+            padding: 10px 12px;
+            padding-bottom:100px;
+            position: relative;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.18s ease
+        }
+        .fila-ventanas button:hover {
+            background-color: #f3ead7;
+            color: #df702c;
+        }
+        .fila-ventanas button:active {
+            background-color: #e0c8b0;
+        }
+        
+        /* ── Botón activo ── */
+        .tab-activa {
+            background-color: #f3ead7 !important;
+            color: #df702c !important;
+            border-bottom: 3px solid #df702c !important;
+        }
+
+        /* ── Competencias ── */
+        .comp-bloques {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            text-align: left;
+            margin-top: 12px;
+        }
+        @media (max-width: 900px) {
+            .comp-bloques { grid-template-columns: 1fr; }
+        }
+        .comp-bloque {
+            background: #fbf5ef;
+            border: 1px solid #e0d0c0;
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+        .comp-bloque-titulo {
+            font-weight: bold;
+            color: #5a4035;
+            font-size: 17px;
+            margin: 0 0 8px;
+            border-bottom: 2px solid #5f4f3f;
+            padding-bottom: 6px;
+        }
+        .comp-fila {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 5px 0;
+            font-size: 15px;
+            border-bottom: 1px solid #e0d0c0;
+            color: #6b5a53;
+        }
+        .comp-fila.competente {
+            color: #3d2b20;
+            font-weight: 600;
+        }
+        .comp-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            border: 1.5px solid #c7a89a;
+        }
+        .dot-on  { background: #df702c; border-color: #df702c; }
+        .dot-off { background: transparent; }
+        .comp-mod {
+            min-width: 28px;
+            text-align: right;
+            font-weight: 700;
+            color: #5a4035;
+            font-size: 15px;
+        }
+        .comp-nombre { flex: 1; }
+        .comp-stat { color: #a08070; font-weight: 400; }
+
+        .comp-grupo {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 6px 0;
+            border-bottom: 1px solid #e0d0c0;
+        }
+        .comp-grupo:last-child { border-bottom: none; }
+        .comp-titulo {
+            font-weight: bold;
+            color: #5a4035;
+            margin: 0;
+            font-size: 12px;
+        }
+        .comp-valor {
+            color: #6b5a53;
+            margin: 0;
+            font-size: 12px;
+        }
+        .comp-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .comp-tag {
+            background: #e8d8c8;
+            border: 1px solid #c7a89a;
+            border-radius: 8px;
+            padding: 2px 8px;
+            font-size: 11px;
+            color: #5a4035;
+        }
+
+        /* ── Rasgos ── */
+        .rasgos-seccion {
+            margin-bottom: 18px;
+            text-align: left;
+        }
+        .rasgos-titulo {
+            font-size: 22px;
+            font-weight: bold;
+            color: #df702c;
+            border-bottom: 1px solid #e0d0c0;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+        }
+        .rasgo-item {
+            background: #fbf5ef;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+        }
+        .rasgo-nombre {
+            font-weight: bold;
+            color: #5a4035;
+            margin: 0 0 4px;
+            font-size: 13px;
+        }
+        .rasgo-desc {
+            color: #6b5a53;
+            margin: 0;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        /* ── Equipo ── */
+        .equipo-lista {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            text-align: left;
+        }
+        .equipo-item {
+            background: #fbf5ef;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #3d2b20;
+        }
+        .equipo-tipo {
+            background: #e8d8c8;
+            border-radius: 6px;
+            padding: 1px 8px;
+            font-size: 11px;
+            color: #5a4035;
+            margin-left: auto;
+        }
+        /* //////////////// Popups ////////////////// */
+        .clickable:hover {
+            background-color: #f6efe5;
+        }
+
+        .popup {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .oculto {
+            display: none;
+        }
+
+        .popup-contenido {
+            position: relative;
+            background: white;
+            border-radius: 14px;
+            padding: 20px 20px 15px;
+            width: min(520px, 90%);
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+        }
+
+        .popup-cerrar {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            border: none;
+            background: transparent;
+            font-size: 24px;
+            cursor: pointer;
+            color: #5a4035;
+        }
+
+        .popup-seccion {
+            margin-bottom: 18px;
+        }
+
+        .popup-seccion h3 {
+            margin: 0 0 10px;
+            font-size: 16px;
+            color: #5a4035;
+        }
+
+        .popup-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background: #fbf5ef;
+        }
+
+        .popup-item small {
+            display: block;
+            color: #6b5a53;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="panel-Personaje">
+        <h2 class="titulo-panel" id="nombre-personaje"> [Nombre]</h2>
+        <p class="Info-personaje" id="info-personaje">[Raza], [Clase] [Nivel]</p>
+    </div>
+    <div class="layout-principal">
+        <div class="columna-izquierda">
+            <div class="panel-estadisticas">
+                <h2 class="titulo-panel">CARACTERISTICAS</h2>
+                
+                <div class="fila-stats">
+                    <div class="caja-stat">
+                        <p class="titulo-stat">FUE</p>
+                        <p class="modificador-stat" id="mod-FUE">+0</p>
+                        <p class="valor-stat" id="FUE" >10</p>
+                    </div>
+                    <div class="caja-stat">
+                        <p class="titulo-stat">DES</p>
+                        <p class="modificador-stat" id="mod-DES">+0</p>
+                        <p class="valor-stat" id="DES">10</p>
+                    </div>
+                    <div class="caja-stat">
+                        <p class="titulo-stat">CON</p>
+                        <p class="modificador-stat" id="mod-CON">+0</p>
+                        <p class="valor-stat" id="CON">10</p>
+                    </div>
+                    <div class="caja-stat">
+                        <p class="titulo-stat">INT</p>
+                        <p class="modificador-stat" id="mod-INT">+0</p>
+                        <p class="valor-stat" id="INT">10</p>
+                    </div>
+                    <div class="caja-stat">
+                        <p class="titulo-stat">SAB</p>
+                        <p class="modificador-stat" id="mod-SAB">+0</p>
+                        <p class="valor-stat" id="SAB">10</p>
+                    </div>
+                    <div class="caja-stat">
+                        <p class="titulo-stat">CAR</p>
+                        <p class="modificador-stat" id="mod-CAR">+0</p>
+                        <p class="valor-stat" id="CAR">10</p>
+                    </div>
+                </div>
+                
+                <div class="fila-extra">
+                    <div class="caja-stat clickable" data-popup-key="PG">
+                        <p class="titulo-stat">Puntos de Golpe</p>
+                        <p class="modificador-stat" id="PG">10</p>
+                    </div>
+                    <div class="caja-stat clickable" data-popup-key="Velocidad">
+                        <p class="titulo-stat">Velocidad</p>
+                        <p class="modificador-stat" id="Vel">10</p>
+                        <p class="valor-stat">Pies</p>
+                    </div>
+                    <div class="caja-stat clickable" data-popup-key="Iniciativa">
+                        <p class="titulo-stat">Iniciativa</p>
+                        <p class="modificador-stat" id="Ini">+1</p>
+                    </div>
+                    <div class="caja-stat clickable" data-popup-key="CA">
+                        <p class="titulo-stat">Clase Armadura</p>
+                        <p class="modificador-stat" id="CA">+0</p>
+                        <p class="valor-stat" id="armadura">[Armadura]</p>
+                    </div>
+                    <div class="caja-stat">
+                        <p class="titulo-stat">Bonif. Competencia</p>
+                        <p class="modificador-stat" id="BC">+2</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-vida" id="panel-vida">
+                <div class="vida-grid">
+                    <div class="vida-info">
+                        <p class="titulo-panel">Puntos de Golpe</p>
+                        <p id="hpResumen">PG máx / PG actuales</p>
+                        <p class="vida-temporales oculto" id="hpTemporalesTexto">+0 PG temporales</p>
+                        <div class="vida-barra" id="barraVidaContenedor">
+                            <div class="barra-fondo">
+                                <div class="barra-roja" id="barraRoja"></div>
+                                <div class="barra-azul" id="barraAzul"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="vida-contenedor">
+                        <div class="vida-controles">
+                        <input type="number" id="hpInput" min="0" value="1"/>
+
+                        <div class="botones-vida">
+                            <button id="btnCuracion" type="button">Curación</button>
+                            <button id="btnDano" type="button">Daño</button>
+                            <button id="btnTemporales" type="button">PG temporales</button>
+                        </div>
+
+                        <label class="chk-inspiracion">
+                            <input type="checkbox" id="chkInspiracion"/>
+                            Inspiración
+                        </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="columna-derecha">
+            <div class="fila-ventanas" style="z-index: 0;">
+                <button id="competenciasBtn" type="button">Competencias</button>
+                <button id="rasgosBtn" type="button">Rasgos</button>
+                <button id="hechizosBtn" type="button">Hechizos</button>
+                <button id="equipoBtn" type="button">Equipo</button>
+
+            </div>
+            <div class="panel-ventanas" style="z-index: 1;"></div>
+        </div>
+    </div>
+
+    <div id="popup-estadisticas" class="popup oculto">
+        <div class="popup-contenido">
+            <button id="popupCerrar" class="popup-cerrar" aria-label="Cerrar">×</button>
+            <h2>Detalle de estadísticas</h2>
+            <div id="popupContenido"></div>
+        </div>
+    </div>
+    <div id="popup-rasgo" class="popup oculto">
+        <div class="popup-contenido">
+            <button class="popup-cerrar" onclick="cerrarPopupRasgo()">×</button>
+            <div id="popup-rasgo-contenido"></div>
+        </div>
+    </div>
+    <script src="datos.js"></script>
+    <script src="personajeDatos.js"></script>
+    <script src="logica.js"></script>
+    
+
+</body>
+</html>
