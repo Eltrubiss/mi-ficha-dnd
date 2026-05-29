@@ -310,6 +310,310 @@
         .oculto {
             display: none;
         }
+
+        /* //////////////// Navegación ficha/build ////////////////// */
+        .cabecera-personaje {
+            display: grid;
+            grid-template-columns: minmax(180px, 1fr) auto auto;
+            align-items: start;
+            gap: 18px;
+        }
+        .controles-personaje {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            min-width: 180px;
+        }
+        .controles-personaje label {
+            color: #5a4035;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .controles-personaje select {
+            border: 2px solid #c7a89a;
+            border-radius: 10px;
+            background: white;
+            color: #3d2b20;
+            padding: 8px 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .acciones-personaje {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .acciones-personaje button,
+        .build-boton {
+            border: none;
+            border-radius: 10px;
+            background: #bea98d;
+            color: #3d2b20;
+            padding: 10px 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.18s ease, color 0.18s ease;
+        }
+        .acciones-personaje button:hover,
+        .build-boton:hover {
+            background-color: #f3ead7;
+            color: #df702c;
+        }
+        .vista-activa {
+            background-color: #5a4035 !important;
+            color: #fff8ed !important;
+        }
+        .layout-build {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .layout-build.oculto {
+            display: none;
+        }
+        .panel-build {
+            background-color: #f9f2e8;
+            border-radius: 15px;
+            padding: 20px;
+            width: 100%;
+        }
+        .build-intro {
+            margin: 0 0 16px;
+            color: #6b5a53;
+            line-height: 1.5;
+        }
+        .build-nivel {
+            background: #fbf5ef;
+            border: 1px solid #e0d0c0;
+            border-left: 5px solid #bea98d;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 14px;
+        }
+        .build-nivel.actual {
+            border-left-color: #df702c;
+            box-shadow: 0 8px 18px rgba(90, 64, 53, 0.08);
+        }
+        .build-nivel h3 {
+            margin: 0 0 10px;
+            color: #5a4035;
+            font-family: Georgia, serif;
+        }
+        .build-campos {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .build-campo {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .build-campo label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #5a4035;
+            text-transform: uppercase;
+        }
+        .build-campo input,
+        .build-campo select {
+            border: 1px solid #c7a89a;
+            border-radius: 8px;
+            background: white;
+            padding: 9px 10px;
+            color: #3d2b20;
+        }
+        .build-rasgos {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .build-rasgo {
+            background: #fff;
+            border: 1px solid #dccbb0;
+            border-radius: 999px;
+            color: #5a4035;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .build-rasgo-grupo {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+            width: 100%;
+        }
+        .build-seleccion {
+            background: #fff8ed;
+            border: 1px dashed #c7a89a;
+            border-radius: 10px;
+            color: #5a4035;
+            line-height: 1.4;
+            padding: 8px 10px;
+            width: 100%;
+        }
+        .build-seleccion small {
+            display: block;
+            color: #6b5a53;
+            margin-top: 4px;
+        }
+        .build-pendiente,
+        .build-completo {
+            border-radius: 999px;
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            margin-left: 6px;
+            padding: 2px 7px;
+        }
+        .build-pendiente {
+            background: #ffe6e1;
+            color: #9b2f25;
+        }
+        .build-completo {
+            background: #e6f4df;
+            color: #2d6c28;
+        }
+        
+        .build-rasgos-columna {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .build-seccion-rasgos {
+            background: #fbf5ef;
+            border: 1px solid #e0d0c0;
+            border-radius: 12px;
+            padding: 10px 12px;
+        }
+        .build-seccion-titulo {
+            color: #5a4035;
+            font-family: Georgia, serif;
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0 0 10px;
+            border-bottom: 2px solid #5f4f3f;
+            padding-bottom: 6px;
+        }
+        .build-rasgo-card {
+            background-color: #ffffff;
+            border: 1px solid #c8b9a6;
+            border-left: 4px solid #5a4035;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 8px;
+            padding: 10px 14px;
+            text-align: left;
+            transition: all 0.18s ease-in-out;
+        }
+        .build-rasgo-card:hover {
+            background-color: #fdfaf5;
+            border-left-color: #df702c;
+            transform: translateX(2px);
+        }
+        .build-rasgo-card-titulo {
+            color: #5a4035;
+            font-family: Georgia, serif;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+        .build-rasgo-card-resumen {
+            color: #6b5a53;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .build-seleccion-extension {
+            background: #fff8ed;
+            border: 1px dashed #c7a89a;
+            border-left: 4px solid #df702c;
+            border-radius: 0 10px 10px 0;
+            color: #5a4035;
+            cursor: pointer;
+            line-height: 1.4;
+            margin: -4px 0 10px 28px;
+            padding: 8px 10px;
+            text-align: left;
+            transition: background-color 0.18s ease, transform 0.18s ease;
+        }
+        .build-seleccion-extension:hover {
+            background: #f3ead7;
+            transform: translateX(2px);
+        }
+        .build-seleccion-extension small {
+            display: block;
+            color: #6b5a53;
+            margin-top: 4px;
+        }
+        .build-seleccion-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 6px;
+        }
+        .build-seleccion-tag {
+            background: #e8d8c8;
+            border-radius: 999px;
+            color: #5a4035;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+        }
+        .build-reseleccionar {
+            background: #5a4035;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 700;
+            margin-top: 8px;
+            padding: 6px 10px;
+        }
+        .build-popup-contador {
+            background: #f3ead7;
+            border: 1px solid #dccbb0;
+            border-radius: 10px;
+            color: #5a4035;
+            font-weight: 700;
+            margin-bottom: 12px;
+            padding: 10px;
+        }
+        .build-popup-opciones {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .build-popup-opcion {
+            cursor: pointer;
+            user-select: none;
+        }
+        .build-popup-opcion.bloqueada {
+            opacity: 0.55;
+        }
+        .build-alerta {
+            background: #ffe6e1;
+            border: 1px solid #cf5b4d;
+            border-radius: 10px;
+            color: #9b2f25;
+            font-weight: 700;
+            margin: 8px 0 14px;
+            padding: 9px 12px;
+        }
+        @media (max-width: 900px) {
+            .cabecera-personaje {
+                grid-template-columns: 1fr;
+            }
+            .controles-personaje,
+            .acciones-personaje {
+                justify-content: flex-start;
+            }
+        }
         /* //////////////// Ventanas ////////////////// */
         .fila-ventanas {
             display: grid;
@@ -664,11 +968,21 @@
     </style>
 </head>
 <body>
-    <div class="panel-Personaje">
-        <h2 class="titulo-nombre" id="nombre-personaje"> [Nombre]</h2>
-        <p class="Info-personaje" id="info-personaje">[Raza], [Clase] [Nivel]</p>
+    <div class="panel-Personaje cabecera-personaje">
+        <div class="datos-personaje">
+            <h2 class="titulo-nombre" id="nombre-personaje"> [Nombre]</h2>
+            <p class="Info-personaje" id="info-personaje">[Raza], [Clase] [Nivel]</p>
+        </div>
+        <div class="controles-personaje">
+            <label for="selectorNivelPersonaje">Nivel</label>
+            <select id="selectorNivelPersonaje" aria-label="Seleccionar nivel del personaje"></select>
+        </div>
+        <div class="acciones-personaje">
+            <button id="btnVistaBuild" type="button">Build</button>
+            <button id="btnVistaPersonaje" type="button" class="vista-activa">Personaje</button>
+        </div>
     </div>
-    <div class="layout-principal">
+    <div class="layout-principal" id="vistaPersonaje">
         <div class="columna-izquierda">
             <div class="panel-estadisticas">
                 <h2 class="titulo-panel">CARACTERISTICAS</h2>
@@ -773,6 +1087,15 @@
 
             </div>
             <div class="panel-ventanas" style="z-index: 1;"></div>
+        </div>
+    </div>
+
+    <div class="layout-build oculto" id="vistaBuild">
+        <div class="panel-build">
+            <h2 class="titulo-panel">Build del Personaje</h2>
+            <p class="build-intro">Planifica el personaje por niveles. El nivel 1 reúne identidad, raza, subraza y clase; los niveles siguientes muestran los rasgos desbloqueados según la clase.</p>
+            <div id="buildAvisos"></div>
+            <div id="buildNiveles"></div>
         </div>
     </div>
 

@@ -167,52 +167,51 @@ let libroDeReglasBasicas = {
     }
   ],
   clases: [
-    //{
-    //  id: "barbaro",
-    //  nombre: "Bárbaro",
-    //  dadoDeGolpe: 12,
-    //  competencias: {
-    //    salvaciones:   ["FUE", "CON"],
-    //    habilidades:   ["Atletismo", "Intimidación"],
-    //    armas:         {
-    //      descripcion: "Armas simples y marciales",
-    //      competencias: ["armasSimples", "armasMarciales"]
-    //    },
-    //    armaduras:     {
-    //      descripcion: "Ligeras, medias, escudos",
-    //      competencias: ["ligera", "media", "escudo"]
-    //    },
-    //    herramientas:  "Ninguna",
-    //    idiomas:       []   // los idiomas van en razaElegida.idiomas
-    //  },
-    //  rasgos: [
-    //    {
-    //      nombre: "Competencias iniciales",
-    //      nivelClase: 1
-    //    },
-    //    {
-    //      nombre: "Defensa sin Armadura",
-    //      descripcion: "Si no estás portando armadura alguna, tu Clase de Armadura será 10 + tu modificador de Destreza + tu modificador de Constitución. Podras usar escudo sin tener que renunciar a este beneficio.",
-    //      nivelClase: 1,
-    //      efectos: [
-    //        { tipoDeEfecto: "caSinArmadura",
-    //          base: 10,
-    //          modificadores: ["DES", "CON"],
-    //          condicion: {sinArmadura:true, sinEscudo: false,nivelClase: 1} }
-    //      ]
-    //    },
-    //    {
-    //      nombre: "Furia",
-    //    }
-    //  ]
-    //},
+    {
+      id: "barbaro",
+      nombre: "Bárbaro",
+      dadoDeGolpe: 12,
+      competencias: {
+        salvaciones:   ["FUE", "CON"],
+        habilidades:   [],
+        armas:         {
+          descripcion: "Armas simples y marciales",
+          competencias: ["armasSimples", "armasMarciales"]
+        },
+        armaduras:     {
+          descripcion: "Ligeras, medias, escudos",
+          competencias: ["ligera", "media", "escudo"]
+        },
+        herramientas:  "Ninguna",
+        idiomas:       []   // los idiomas van en razaElegida.idiomas
+      },
+      rasgos: [
+        {
+          nombre: "Competencias iniciales",
+          nivelClase: 1
+        },
+        {
+          nombre: "Defensa sin Armadura",
+          descripcion: "Si no estás portando armadura alguna, tu Clase de Armadura será 10 + tu modificador de Destreza + tu modificador de Constitución. Podras usar escudo sin tener que renunciar a este beneficio.",
+          nivelClase: 1,
+          efectos: [
+            { tipoDeEfecto: "caSinArmadura",
+              base: 10,
+              modificadores: ["DES", "CON"],
+              condicion: {sinArmadura:true, sinEscudo: false,nivelClase: 1} }
+          ]
+        },
+        {
+          nombre: "Furia",
+        }
+      ]
+    },
     {
       id: "guerrero",
       nombre: "Guerrero",
       dadoDeGolpe: 10,
       competencias:{
         salvaciones:   ["FUE", "CON"],
-        habilidades:   ["Atletismo", "Intimidación"],
         armas:         {
           descripcion: "Armas simples y marciales",
           competencias: ["armasSimples", "armasMarciales"]
@@ -226,8 +225,10 @@ let libroDeReglasBasicas = {
       },
       rasgos: [
         {
+          id: "competencias_iniciales_guerrero",
           nombre: "Competencias Iniciales",
           nivelClase: 1,
+          requisitos: "Nivel 1",
           descripcionResum: "Obtienes las siguientes competencias:...",
           descripcion: `
           Obtienes las siguientes competencias:
@@ -237,17 +238,58 @@ let libroDeReglasBasicas = {
                 <li><strong>Habilidades</strong>: Escoje dos entre: Acrobacias, Atletismo, Historia, Intimidación, Trato con animales, Percepción, Perspicacia, Supervivencia. </li>
                 <li><strong>Armas</strong>: Eres competente en armas simples y armas marciales. </li>
                 <li><strong>Armaduras</strong>: Eres competente en todas las armaduras y escudos. </li>
-                <li>>strong>Herramientas</strong>: No recibes competencias con herramientas por este rasgo.
-          `
+                <li>>strong>Herramientas</strong>: No recibes competencias con herramientas por este rasgo. </li>
+              </ul>
+          `,
+          selecciones: [
+            {
+              id: "habilidades_guerrero_n1",
+              nombre: "Habilidades de Guerrero",
+              tipo: "habilidad",
+              cantidadSeleccionable: 2,
+              descripcion: "Escoge dos habilidades para las que ganas competencia.",
+              opciones: [
+                { id: "acrobacias", nombre: "Acrobacias" },
+                { id: "atletismo", nombre: "Atletismo" },
+                { id: "historia", nombre: "Historia" },
+                { id: "intimidacion", nombre: "Intimidación" },
+                { id: "trato_con_animales", nombre: "Trato con animales" },
+                { id: "percepcion", nombre: "Percepción" },
+                { id: "perspicacia", nombre: "Perspicacia" },
+                { id: "supervivencia", nombre: "Supervivencia" }
+              ]
+            }
+          ]
         },
         {
+          id: "estilo_combate_guerrero",
           nombre: "Estilo de Combate",
           nivelClase: 1,
           descripcionResum: "Elige una de las siguientes opciones de Estilo de Combate",
           descripcion:`
             Adoptas un estilo particular de lucha como especialidad. Elije una de las siguientes opciones. No puedes escojer un mismo Estilo de Lucha más de una vez, incluso cuando más adelante tengas que volver a escoger uno.
           `,
-          efectos: [ {condicion: {nivelClase: 1}} ]
+          selecciones: [
+            {
+              id: "estilo_combate",
+              nombre: "Estilo de Combate",
+              tipo: "estilo_combate",
+              tipoPlural: "estilos de combate",
+              cantidadSeleccionable: 1,
+              fuenteOpciones: {
+                coleccion: "opcionesCompartidas.estilosCombate",
+                incluirIds: [
+                  "arqueria",
+                  "defensa",
+                  "duelo",
+                  "a_dos_manos",
+                  "proteccion",
+                  "dos_armas"
+                ]
+              }
+            }
+          ]
+
         },
         {
           nombre: "Tomar Aliento",
@@ -325,7 +367,84 @@ let libroDeReglasBasicas = {
       tipo: "escudo",
       bonifCA: 2
     }
-  ]
+  ],
+  dotes: [
+    {    }
+  ],
+  opcionesCompartidas: {
+    estilosCombate: [
+      {
+        id: "arqueria",
+        nombre: "Arquería",
+        descripcionResum: "+2 a las tiradas de ataque con armas a distancia.",
+        descripcion: `
+          Obtienes un bonificador +2 a las tiradas de ataque que hagas
+          con armas a distancia.
+        `,
+        efectos: [
+          {
+            tipoDeEfecto: "bono_ataque",
+            valor: 2,
+            condicion: { etiqueta: "distancia" }
+          }
+        ]
+      },
+      {
+        id: "defensa",
+        nombre: "Defensa",
+        descripcionResum: "Mientras lleves puesta una armadura: +1 a la CA",
+        descripcion: `
+          Mientras lleves puesta una armadura, sea cual sea, ganas un +1 la CA.
+        `,
+        efectos: [
+          {
+            tipoDeEfecto: "bonifCA",
+            valor: 1,
+            condicion: { usaArmadura: true }
+          }
+        ]
+      },
+      {
+        id: "duelista",
+        nombre: "Duelista",
+        descripcionResum: "Si llevas solo un arma en una mano: +2 al ataque",
+        descripcion: `
+          Cuando llevas un arma en una mano y ningún arma más, ganas un bono de +2 a las tiradas de daño con ese arma.
+        `,
+        efectos: [
+          {
+            tipoDeEfecto: "bono_ataque",
+            valor: 2,
+            condicion: { etiqueta: "una-mano" }
+          }
+        ]
+      },
+      {
+        id: "a_dos_manos",
+        nombre: "Lucha con Arma a Dos Manos",
+        descripcionResum: "Cuando sacas un 1 o un 2 en una tirada de daño con un arma a dos manos, puedes..",
+        descripcion: `
+          Cuando sacas un 1 o un 2 en una tirada de daño con un arma a dos manos, puedes volver a realizar la tirada de daño y deberás usar la nueva tirada, incluso si la nueva tirada vuelve a ser un 1 o un 2. El arma debe ser un arma a dos manos o tener la propiedad versátil para ganar este beneficio.
+        `
+      },
+      {
+        id: "proteccion",
+        nombre: "Protección",
+        descripcionResum: "Puedes interponerte en un ataque para dar desventaja a la tirada.",
+        descripcion: `
+          Cuando una criatura que puedes ver ataca a un objetivo que no eres tú y está a 5 pies o menos de ti. Puedes usar tu reacción para hacer que el enemigo tenga desventaja en la tirada de ataque. Debes estar usando un escudo.
+        `
+      },
+      {
+        id: "dos_armas",
+        nombre: "Lucha con Dos Armas",
+        descripcionResum: "Puedes añadir tu modificador de características a un segundo ataque.",
+        descripcion:`
+          Cuando luchas con dos armas con la propiedad "ligera", puedes añadir tu modificador de caracterísica al daño del ataque de tu acción adicional.
+        `
+      }
+    ]
+  }
 };
 
 console.log("Mi libro de reglas:", libroDeReglasBasicas);

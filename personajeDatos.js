@@ -22,6 +22,7 @@ window.personajeActual = {
   escudo: "escudonormal",
   hpActual: 0,
   hpTemporales: 0,
-  Inspiracion: false
+  Inspiracion: false,
+  eleccionesRasgos: {}
 };
 
