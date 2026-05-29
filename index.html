@@ -29,26 +29,28 @@
         }
         /* //////////////////// Filas y cajas de estadísticas //////////////////// */
         .fila-stats {
-            display: grid; /* Activamos el superpoder de cuadrícula */
-            grid-template-columns: repeat(6, minmax(40px, 100px)); /* Crea exactamente 6 columnas del mismo ancho (1 fracción) */
-            justify-content: center; /* Centra las columnas horizontalmente */
-            gap: 5px; 
-            padding: 10px; /* Espacio entre esta fila y la siguiente */
-            border-bottom: 2px solid #5a4035; /* Espacio entre esta fila y la siguiente */
+            display: grid; 
+            grid-template-columns: repeat(6, minmax(40px, 100px));
+            justify-content: center;
+            padding: 0px;
+            border-radius: 15px;
+            border-top: 2px solid #5a4035;
+            border-bottom: 2px solid #5a4035;
         }
         .fila-extra {
-            display: flex; /* Cambiamos Grid por Flexbox para que fluya como el agua */
-            flex-wrap: wrap; /* Permite que las cajas caigan si no caben en la pantalla */
-            justify-content: center; /* ¡Solución al Error 2! Centra siempre las cajas sin importar cuántas sean */
-            gap: 5px; 
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 5px;
+            padding: 0 17px;
             width: 100%;
-            margin-top: 20px; /* ¡Solución al Error 1! Crea una separación invisible de 20px arriba */
+            margin-top: 20px;
         }
 
         /* 2. Un truco nuevo: Le damos ancho solo a las cajas de esta fila */
-        .fila-extra .caja-stat {
+        .fila-extra .caja-extra {
             /* Como Flexbox no tiene el minmax() de Grid, le decimos nosotros el tamaño */
-            min-width: 100px; 
+            min-width: 40px; 
             max-width: 120px;
             flex: 1; /* Permite que crezcan un poco para compartir el espacio */
         }
@@ -113,6 +115,12 @@
         }
         /* //////////////////// Cajas de estadísticas (FUE, DES, CON, etc.) //////////////////// */
         .caja-stat {
+            border-left: 2px solid #c7a89a;
+            border-right: 2px solid #c7a89a;
+            text-align: center; /* Todo el texto centrado */
+            padding: 5px; /* Espacio adentro de la caja */
+        }
+        .caja-extra {
             border: 2px solid #c7a89a; /* Borde oscuro */
             border-radius: 10px; /* Bordes redondeados */
             background-color: white; /* Fondo blanco */
@@ -123,12 +131,29 @@
         .titulo-panel {
             margin-top: 0;
             color: #5a4035;
+            font-family: Georgia, serif;
+        }
+        .titulo-nombre {
+            margin-top: 0;
+            color: #5a4035;
             border-bottom: 2px solid #5a4035;
             padding-bottom: 10px;
             font-family: Georgia, serif;
         }
         /* Letra pequeña para el título (Fuerza) */
         .titulo-stat {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 0;
+            text-transform: uppercase;
+
+            min-height: 22px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .titulo-extra {
             font-size: 10px;
             font-weight: bold;
             margin: 0;
@@ -531,11 +556,116 @@
             color: #6b5a53;
             margin-top: 5px;
         }
+        /*/////////////////Popup de rasgos/////////////////*/
+        .rasgo-tarjeta-boton {
+            background-color: #ffffff;
+            border: 1px solid #c8b9a6;
+            border-left: 4px solid #5a4035; /* Un detalle elegante al costado */
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s ease-in-out; /* Suaviza la animación del hover */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+
+        /* EFECTO HOVER: Se activa cuando el mouse pasa por encima */
+        .rasgo-tarjeta-boton:hover {
+            background-color: #faf6ee;
+            border-color: #5a4035;
+            transform: translateY(-2px); /* Se eleva un poquito simulando relieve */
+            box-shadow: 0 4px 8px rgba(90, 64, 53, 0.15);
+        }
+
+        .rasgo-tarjeta-titulo {
+            font-weight: bold;
+            color: #5a4035;
+            font-size: 14px;
+            margin-bottom: 3px;
+            font-family: Georgia, serif;
+        }
+
+        .rasgo-tarjeta-resumen {
+            font-size: 12px;
+            color: #6b5a53;
+            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis; /* Si el texto es muy largo pone "..." automáticamente */
+        }
+        /*/////////////////Ventanas laterales de Rasgos//////////////////////////////*/
+        .desplegable-seccion {
+            background-color: #f9f2e8; /* Fondo suave pergamino */
+            border: 1px solid #dccbb0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            overflow: hidden; /* Evita que el contenido se salga de los bordes redondeados */
+        }
+
+        .desplegable-subseccion {
+            margin-top: 10px;
+            background-color: #ffffff; /* Fondo más claro para distinguir anidamiento */
+            border: 1px solid #eaddc5;
+            border-radius: 6px;
+        }
+
+        /* El título donde se hace clic */
+        .desplegable-titulo, .desplegable-subtitulo {
+            padding: 10px 15px;
+            cursor: pointer;
+            font-family: Georgia, serif;
+            color: #5a4035;
+            font-weight: bold;
+            user-select: none; /* Evita que el texto se sombree azul al hacer doble clic rápido */
+            transition: background-color 0.2s;
+        }
+
+        .desplegable-titulo {
+            font-size: 18px;
+            background-color: #efdfc5;
+            border-bottom: 1px solid #dccbb0;
+        }
+
+        .desplegable-subtitulo {
+            font-size: 16px;
+            background-color: #f7ecd7;
+            border-bottom: 1px dotted #dccbb0;
+        }
+
+        /* Efecto hover sobre los títulos */
+        .desplegable-titulo:hover, .desplegable-subtitulo:hover {
+            background-color: #e5d1b3;
+        }
+
+        /* El contenedor de las tarjetas (botones) de adentro */
+        .desplegable-contenido {
+            padding: 10px;
+        }
+
+        /* Ocultar el triangulito feo por defecto de Safari/Chrome antiguo (Opcional, pero recomendado) */
+        details > summary {
+            list-style: none;
+        }
+        details > summary::-webkit-details-marker {
+            display: none;
+        }
+        /* Agregamos nuestro propio indicador de flecha con CSS */
+        details > summary::before {
+            content: '▶';
+            font-size: 12px;
+            margin-right: 8px;
+            display: inline-block;
+            transition: transform 0.2s ease-in-out;
+        }
+        details[open] > summary::before {
+            transform: rotate(90deg); /* La flecha apunta hacia abajo cuando se abre */
+        }
     </style>
 </head>
 <body>
     <div class="panel-Personaje">
-        <h2 class="titulo-panel" id="nombre-personaje"> [Nombre]</h2>
+        <h2 class="titulo-nombre" id="nombre-personaje"> [Nombre]</h2>
         <p class="Info-personaje" id="info-personaje">[Raza], [Clase] [Nivel]</p>
     </div>
     <div class="layout-principal">
@@ -577,26 +707,26 @@
                 </div>
                 
                 <div class="fila-extra">
-                    <div class="caja-stat clickable" data-popup-key="PG">
-                        <p class="titulo-stat">Puntos de Golpe</p>
+                    <div class="caja-extra clickable" data-popup-key="PG">
+                        <p class="titulo-extra">Puntos de Golpe</p>
                         <p class="modificador-stat" id="PG">10</p>
                     </div>
-                    <div class="caja-stat clickable" data-popup-key="Velocidad">
-                        <p class="titulo-stat">Velocidad</p>
+                    <div class="caja-extra clickable" data-popup-key="Velocidad">
+                        <p class="titulo-extra">Velocidad</p>
                         <p class="modificador-stat" id="Vel">10</p>
                         <p class="valor-stat">Pies</p>
                     </div>
-                    <div class="caja-stat clickable" data-popup-key="Iniciativa">
-                        <p class="titulo-stat">Iniciativa</p>
+                    <div class="caja-extra clickable" data-popup-key="Iniciativa">
+                        <p class="titulo-extra">Iniciativa</p>
                         <p class="modificador-stat" id="Ini">+1</p>
                     </div>
-                    <div class="caja-stat clickable" data-popup-key="CA">
-                        <p class="titulo-stat">Clase Armadura</p>
+                    <div class="caja-extra clickable" data-popup-key="CA">
+                        <p class="titulo-extra">Clase Armadura</p>
                         <p class="modificador-stat" id="CA">+0</p>
                         <p class="valor-stat" id="armadura">[Armadura]</p>
                     </div>
-                    <div class="caja-stat">
-                        <p class="titulo-stat">Bonif. Competencia</p>
+                    <div class="caja-extra">
+                        <p class="titulo-extra">Bonif. Competencia</p>
                         <p class="modificador-stat" id="BC">+2</p>
                     </div>
                 </div>

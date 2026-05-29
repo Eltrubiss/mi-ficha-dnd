@@ -1,5 +1,5 @@
 // Este objeto contendrá todas las reglas de nuestro juego
-let libroDeReglas = {
+let libroDeReglasBasicas = {
   razas: [
     {
       id: "humano",
@@ -9,11 +9,23 @@ let libroDeReglas = {
       rasgos: [
         {
             nombre: "Rasgos Humanos",
-            descripcion: "Considera los siguientes rasgos para tu humano: <br>  ### Atributos Humanos <br> **Edad**: Los humanos alcanzan la madurez a los 15 años y viven hasta los 80 años. <br> - **Tamaño**: Mediano."
+            descripcionResum: "Considera los siguientes rasgos para tu humano: Edad, Idioma, Tamaño.",
+            descripcion: `
+              Considera los siguientes rasgos para tu humano: <br> 
+              <h4 style="color: #5a4035; margin: 10px 0 5px 0;">Atributos Humanos</h4>
+              <ul style="margin-top: 5px;">
+                <li><strong>Edad</strong>: los humanos alcanzan la madurez cerca de la veintena y rara vez llegan a vivir un siglo completo. </li>
+                <li><strong>Idioma</strong>: Puedes hablar, leer y escribir en común y un idioma adicional de tu elección. </li>
+                <li><strong>Tamaño</strong>: los humanos varían mucho en cuanto a altura y constitución, desde aproximadamente los 5 a los 6 pies de alto. Independientemente de tu altura, tu tamaño es Mediano. </li>
+              </ul>
+            `
         },
         {
           nombre: "Mejora de Características del Humano",
-          descripcion: "+1 a todas las características.",
+          descripcionResum: "+1 a todas las características.",
+          descripcion: `
+          Tu puntuación de todas tus características aumenta en 1.
+          `,
           efectos: [
             { tipoDeEfecto: "bono_stat", statAfectada: "FUE", valor: 1 },
             { tipoDeEfecto: "bono_stat", statAfectada: "DES", valor: 1 },
@@ -23,39 +35,113 @@ let libroDeReglas = {
             { tipoDeEfecto: "bono_stat", statAfectada: "CAR", valor: 1 }
           ]
         }
+      ],
+      subrazas: [
+
       ]
     },
     {
       id: "elfo",
       nombre: "Elfo",
-      descripcion: "Como las ramas de un árbol joven, los elfos son flexibles frente al peligro. Confían en que la diplomacia y la negociación permitirán acabar con las diferencias antes de llegar a las manos. Se sabe que han llegado a retirarse ante incursiones contra sus hogares en el bosque, confiados en la seguridad de que pueden limitarse a esperar a que los invasores se marchen. No obstante, cuando la necesidad apremia, los elfos muestran su lado más severo y marcial, haciendo gala de su habilidad con la espada, el arco y la estrategia.",
+      descripcion: "Los elfos son un pueblo mágico de gracia sobrenatural, viviendo en el mundo sin ser del todo parte de él. Viven en lugares de etérea belleza, en medio de antiguos bosques o en plateados minaretes que resplandecen con luz feérica, donde una suave música flota en el aire y delicadas fragancias son transportadas por la brisa. Los elfos aman la naturaleza y la magia, el arte y la maestría, la música y la poesía, y las cosas buenas del mundo.",
       velocidad: 30,
       rasgos: [
         {
             nombre: "Rasgos Élficos",
-            descripcion: "Considera los siguientes rasgos para tu elfo: <br>  ### Atributos Élficos <br> **Edad**:  Aunque los elfos alcanzan la madurez aproximadamente a la misma edad que los humanos, la concepción de la mayoría de edad de los elfos va más allá del crecimiento e incluye la experiencia vital. Los elfos suelen llegar a la edad adulta y recibir su nuevo nombre tras unos cien años y pueden llegar a vivir hasta setecientos cincuenta. <br> **Idiomas**: Puedes hablar, leer y escribir en común y elfo. El idioma elfo es fluido, con entonaciones sutiles y una gramática compleja. La literatura élfica es rica y variada, y sus canciones y poemas son famosos entre el resto de razas. Muchos bardos aprenden este idioma para poder añadir baladas élficas a sus repertorios.  <br>**Tamaño**: Mediano."
+            descripcionResum: "Considera los siguientes rasgos para tu elfo: Edad, Idiomas y Tamaño.",
+            descripcion: `
+              Considera los siguientes rasgos para tu elfo: <br>
+              <h4 style="color: #5a4035; margin: 10px 0 5px 0;">Atributos Élficos</h4>
+              <ul style="margin-top: 5px;">
+                <li><strong>Edad</strong>:  aunque los elfos alcanzan la madurez física más o menos a la misma edad que los humanos, la comprensión élfica de la adultez va más allá del crecimiento físico y abarca la experiencia del mundo. Un elfo típicamente reclama la edad adulta y un nombre adulto alrededor de los 100 años y puede vivir hasta los 750. </li>
+                <li><strong>Idiomas</strong>: Puedes hablar, leer y escribir en común y elfo. El idioma elfo es fluido, con entonaciones sutiles y una gramática compleja. La literatura élfica es rica y variada, y sus canciones y poemas son famosos entre el resto de razas. Muchos bardos aprenden este idioma para poder añadir baladas élficas a sus repertorios.  </li>
+                <li><strong>Tamaño</strong>:  la estatura de los elfos varía entre los menos de 5 pies y los más de 6 y tienen complexiones esbeltas. Tu tamaño es Mediano. </li>
+              </ul>
+             `
+        },
+        {
+          nombre: "Mejora de Características del Elfo",
+          descripcionResum: "+2 a puntuación de Destreza",
+          descripcion: `
+          Tu puntuación de Destreza aumenta en 2.
+          `,
+          efectos: [
+            { tipoDeEfecto: "bono_stat", statAfectada: "DES", valor: 2 }
+          ]
         },
         {
           nombre: "Visión en la Oscuridad",
-          descripcion: "Acostumbrados a la penumbra de los bosques y el cielo nocturno, puedes ver bien en la oscuridad o con poca luz. Hasta a un máximo de 60 pies, eres capaz de ver con luz tenue como si hubiera luz brillante y en la oscuridad como si hubiera luz tenue. Eso sí, no puedes distinguir colores en la oscuridad, solo tonos de gris.",
+          descripcionResum: "Tienes visión en la oscuridad hasta una distancia de 60 pies.",
+          descripcion: `Acostumbrado a los bosques iluminados por el crepúsculo y el cielo nocturno, tienen una visión superior en la oscuridad y la luz tenue. 
+            <br>
+            Puedes ver en luz tenue hasta los 60 pies como si fuera a plena luz, y en la oscuridad como si fuera en luz tenue.
+            <br>
+             Sin embargo, no puedes distinguir colores en la oscuridad, sólo tonos de gris.
+          `,
           efectos: [
             { tipoDeEfecto: "vision", tipoVision: "VisionOscuridad", alcance: 60 }
           ]
         },
         {
           nombre: "Sentidos Agudos",
-          descripcion: "Eres competente en la habilidad Percepción.",
+          descripcionResum: "Eres competente en la habilidad Percepción.",
+          descripcion: `Eres competente en la habilidad <strong>Percepción</strong>. `,
           efectos: [
             { tipoDeEfecto: "bono_habilidad", habilidadAfectada: "Percepción", valor: 1 }
           ]
         },
         {
             nombre: "Linaje Feérico.",
-            descripcion: "Tienes ventaja en las tiradas de salvación para evitar ser hechizado y la magia no puede dormirte."
+            descripcionResum: "Tienes ventaja en las tiradas de salvación para evitar ser hechizado y la magia no puede dormirte.",
+            descripcion: `Tienes ventaja en las tiradas de salvación para evitar ser hechizado y la magia no puede dormirte.`
         },
         {
             nombre: "Trance.",
-            descripcion: " Los elfos no necesitan dormir. Meditan profundamente, en un estado semiconsciente, durante 4 horas al día. La palabra en común para referirse a esta meditación es «trance». Mientras meditas, experimentas algo parecido a sueños, que en realidad son ejercicios mentales que se han vuelto automáticos tras años de práctica. Este trance es suficiente para obtener los mismos beneficios que un humano recibe de 8 horas de sueño. "
+            descripcionResum: "Los elfos no necesitan dormir. Para descansar, entran en Trance...",
+            descripcion: `los elfos no necesitan dormir. En lugar de eso ,meditan profundamente, permaneciendo semiconscientes durante 4 horas al día. (La palabra en Común para tal meditación es “trance.”) Mientras meditas, puedes soñar en cierta manera; tales sueños son en realidad ejercicios mentales que se han convertido en un reflejo a lo largo de años de práctica. Tras descansar de esta manera, obtienes el mismo beneficio que un humano tras 8 horas de sueño. `
+        }
+      ],
+      subrazas: [
+        {
+          id: "altoelfo",
+          nombre: "Alto Elfo",
+          descripcion: "Como alto elfo, tienes una mente afilada y la maestría sobre al menos los rudimentos de la magia. En muchos de los mundos de D&D hay dos tipos de altos elfos. Un tipo (que incluye los elfos grises y elfos de los valles de Greyhawk, los Silvanesti de Dragonlance y los elfos solares de los Reinos Olvidados) son altivos y aislacionistas, creyéndose superiores a los no-elfos e incluso al resto de elfos. El otro tipo (incluyendo a los altos elfos de Greyhawk, los Qualinesti de Dragonlance y los elfos lunares de los Reinos Olvidados) son más comunes y más amistosos, y a menudo se les encuentra entre humanos y otras razas.",
+          rasgos: [
+            {
+              nombre: "Mejora de Características del Alto Elfo",
+              descripcionResum: "+1 a puntuación de Inteligencia",
+              descripcion: `
+              Tu puntuación de Inteligencia aumenta en 1.
+              `,
+              efectos: [
+                { tipoDeEfecto: "bono_stat", statAfectada: "INT", valor: 1 }
+              ]
+            },
+            {
+              nombre: "Entrenamiento en Armas élficas",
+              descripcionResum: "Eres competente con las espadas largas, las espadas cortas, los arcos cortos y los arcos largos.",
+              descripcion: `Eres competente con las espadas largas, las espadas cortas, los arcos cortos y los arcos largos.`,
+              efectos:[
+                { tipoDeEfecto: "bono_arma", armaAfectada: "espadaLarga", valor: 1 },
+                { tipoDeEfecto: "bono_arma", armaAfectada: "espadaCorta", valor: 1 },
+                { tipoDeEfecto: "bono_arma", armaAfectada: "arcoCorto", valor: 1 },
+                { tipoDeEfecto: "bono_arma", armaAfectada: "arcoLargo", valor: 1 }
+              ]
+            },
+            {
+              nombre: "Trucos",
+              descripcionResum: "Conoces un truco a tu elección de la Lista de Conjuros de Mago.",
+              descripcion: `Conoces un truco a tu elección de la Lista de Conjuros de Mago. Inteligencia es tu habilidad de conjuro para este truco.`,
+              efectos: [
+
+              ]
+            },
+            {
+              nombre: "Lenguaje adicional",
+              descripcionResum: "Puedes hablar, leer y escribir un idioma adicional de tu elección.",
+              descripcion: `Puedes hablar, leer y escribir un idioma adicional de tu elección.`,
+            }
+          ]
         }
       ]
     },
@@ -81,49 +167,115 @@ let libroDeReglas = {
     }
   ],
   clases: [
+    //{
+    //  id: "barbaro",
+    //  nombre: "Bárbaro",
+    //  dadoDeGolpe: 12,
+    //  competencias: {
+    //    salvaciones:   ["FUE", "CON"],
+    //    habilidades:   ["Atletismo", "Intimidación"],
+    //    armas:         {
+    //      descripcion: "Armas simples y marciales",
+    //      competencias: ["armasSimples", "armasMarciales"]
+    //    },
+    //    armaduras:     {
+    //      descripcion: "Ligeras, medias, escudos",
+    //      competencias: ["ligera", "media", "escudo"]
+    //    },
+    //    herramientas:  "Ninguna",
+    //    idiomas:       []   // los idiomas van en razaElegida.idiomas
+    //  },
+    //  rasgos: [
+    //    {
+    //      nombre: "Competencias iniciales",
+    //      nivelClase: 1
+    //    },
+    //    {
+    //      nombre: "Defensa sin Armadura",
+    //      descripcion: "Si no estás portando armadura alguna, tu Clase de Armadura será 10 + tu modificador de Destreza + tu modificador de Constitución. Podras usar escudo sin tener que renunciar a este beneficio.",
+    //      nivelClase: 1,
+    //      efectos: [
+    //        { tipoDeEfecto: "caSinArmadura",
+    //          base: 10,
+    //          modificadores: ["DES", "CON"],
+    //          condicion: {sinArmadura:true, sinEscudo: false,nivelClase: 1} }
+    //      ]
+    //    },
+    //    {
+    //      nombre: "Furia",
+    //    }
+    //  ]
+    //},
     {
-      id: "barbaro", // Usamos minúsculas y sin tildes para buscar más fácil
-      nombre: "Bárbaro",
-      dadoDeGolpe: 12, // El bárbaro usa un d12
-      competencias: {
+      id: "guerrero",
+      nombre: "Guerrero",
+      dadoDeGolpe: 10,
+      competencias:{
         salvaciones:   ["FUE", "CON"],
         habilidades:   ["Atletismo", "Intimidación"],
         armas:         {
           descripcion: "Armas simples y marciales",
           competencias: ["armasSimples", "armasMarciales"]
         },
-        armaduras:     {
-          descripcion: "Ligeras, medias, escudos",
-          competencias: ["ligera", "media", "escudo"]
+        armaduras: {
+          descripcion: "Armaduras ligeras, medianas, pesadas y escudos",
+          competencias: ["ligera", "media", "pesada", "escudo"]
         },
-        herramientas:  "Ninguna",
-        idiomas:       []   // los idiomas van en razaElegida.idiomas
+        herramientas: "Ninguna",
+        idiomas: []
       },
       rasgos: [
         {
-          nombre: "Competencias iniciales",
-          nivelClase: 1
-        },
-        {
-          nombre: "Defensa sin Armadura",
-          descripcion: "Si no estás portando armadura alguna, tu Clase de Armadura será 10 + tu modificador de Destreza + tu modificador de Constitución. Podras usar escudo sin tener que renunciar a este beneficio.",
+          nombre: "Competencias Iniciales",
           nivelClase: 1,
-          efectos: [
-            { tipoDeEfecto: "caSinArmadura",
-              base: 10,
-              modificadores: ["DES", "CON"],
-              condicion: {sinArmadura:true, sinEscudo: false} }
-          ]
+          descripcionResum: "Obtienes las siguientes competencias:...",
+          descripcion: `
+          Obtienes las siguientes competencias:
+          <br>
+              <ul style="margin-top: 5px;">
+                <li><strong>Salvaciones</strong>: Ganas competencias en las Tiradas de Salvación de Fuerza y Constitución. </li>
+                <li><strong>Habilidades</strong>: Escoje dos entre: Acrobacias, Atletismo, Historia, Intimidación, Trato con animales, Percepción, Perspicacia, Supervivencia. </li>
+                <li><strong>Armas</strong>: Eres competente en armas simples y armas marciales. </li>
+                <li><strong>Armaduras</strong>: Eres competente en todas las armaduras y escudos. </li>
+                <li>>strong>Herramientas</strong>: No recibes competencias con herramientas por este rasgo.
+          `
         },
         {
-          nombre: "Furia",
+          nombre: "Estilo de Combate",
+          nivelClase: 1,
+          descripcionResum: "Elige una de las siguientes opciones de Estilo de Combate",
+          descripcion:`
+            Adoptas un estilo particular de lucha como especialidad. Elije una de las siguientes opciones. No puedes escojer un mismo Estilo de Lucha más de una vez, incluso cuando más adelante tengas que volver a escoger uno.
+          `,
+          efectos: [ {condicion: {nivelClase: 1}} ]
+        },
+        {
+          nombre: "Tomar Aliento",
+          nivelClase: 1,
+          descripcionResum: "Como acción adicional puedes recuperar 1d10 + Nvl de Guerrero.",
+          descripcion: `
+            Tienes un pozo limitado de aguante que puedes usar para protegerte a ti mismo del peligro. En tu turno, puedes usar una acción adicional para ganar una cantidad de puntos de golpe igual a 1d10 + tu nivel de guerrero.
+            <br>
+            Una vez que hayas usado este rasgo, deber tomar un descanso corto o prolongado antes de poder volver a usarlo.
+          `,
+          efectos: [ {condicion: {nivelClase: 1}}]
+        },
+        {
+          nombre: "Accion Súbita",
+          nivelClase: 2,
+          descripcionResum: "Una vez por descanso, puedes usar una acción extra.",
+          descripcion:`
+            Empezando a 2º nivel, por un momento puedes presionarte a ti mismo más allá de los límites normales. Una vez por turno, puedes usar una acción extra además de tu acción normal y tu posible acción adicional. Una vez que hayas usado este rasgo, deber tomar un descanso corto o prolongado antes de poder volver a usarlo.
+            <br>
+            A partir de nivel 17, puedes usarlo dos veces antes de descansar, pero solo una vez en el mismo turno.
+          `,
+          efectos:[ {condicion: {nivelClase: 2}}]
+        },
+        {
+          nombre: "Arquetipo Marcial",
+          nivelClase: 3,
         }
       ]
-    },
-    {
-      id: "guerrero",
-      nombre: "Guerrero",
-      dadoDeGolpe: 10
     },
     {
       id: "monje",
@@ -176,4 +328,4 @@ let libroDeReglas = {
   ]
 };
 
-console.log("Mi libro de reglas:", libroDeReglas);
+console.log("Mi libro de reglas:", libroDeReglasBasicas);

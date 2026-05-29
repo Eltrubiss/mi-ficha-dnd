@@ -1,7 +1,15 @@
 const personajePorDefecto = {
   nombre: "Sin nombre",
   raza: "humano",
-  clase: "guerrero",
+  subraza: "",
+  nivelClase1: 1,
+  subclase1: "",
+  clase2: "",
+  nivelClase2: 0,
+  subclase2: "",
+  clase3: "",
+  nivelClase3: 0,
+  subclase3: "",
   nivel: 1,
   FUE: 10,
   DES: 10,
@@ -27,9 +35,16 @@ const detalleEstadisticas = {
   CA: { total: 0, items: [] }
 };
 
-let claseElegida = libroDeReglas.clases.find(c => c.id === personajeActual.clase);
-let razaElegida = libroDeReglas.razas.find(r => r.id === personajeActual.raza.toLowerCase());
-let armaduraElegida = libroDeReglas.armaduras.find(a => a.id === personajeActual.armadura);
+let claseElegida = libroDeReglasBasicas.clases.find(c => c.id === personajeActual.clase1);
+let razaElegida = libroDeReglasBasicas.razas.find(r => r.id === personajeActual.raza.toLowerCase());
+let armaduraElegida = libroDeReglasBasicas.armaduras.find(a => a.id === personajeActual.armadura);
+let subrazaElegida = razaElegida && razaElegida.subrazas 
+    ? razaElegida.subrazas.find(s => s.id === personajeActual.subraza?.toLowerCase()) 
+    : null;
+
+let subclaseElegida = claseElegida && claseElegida.subclases 
+    ? claseElegida.subclases.find(sc => sc.id === personajeActual.subclase1?.toLowerCase()) 
+    : null;
 
 const estado = {
   usaArmadura: Boolean(armaduraElegida),
@@ -54,26 +69,37 @@ if (resultado >= 0) {
 const bonifCompetencia = Math.ceil(1 + (personajeActual.nivel / 4)); // Bonificador de competencia
 // Agregar Bonos de Raza
 
-function aplicarBonosDeRasgosDeRaza(personaje, raza) {
-if (!raza || !Array.isArray(raza.rasgos)) return;
-
-raza.rasgos.forEach(rasgo => {
-    if (!Array.isArray(rasgo.efectos)) return;
-
-    rasgo.efectos.forEach(efecto => {
-        if (efecto.tipoDeEfecto === "bono_stat") {
-            let stat = efecto.statAfectada;
-            let valor = Number(efecto.valor);
-
-            if (stat && typeof personaje[stat] === "number" && !Number.isNaN(valor)) {
-                personaje[stat] += valor;
+function aplicarBonosDeRasgosDeRaza() {
+    // --- 1. APLICAMOS BONOS DE LA RAZA PRINCIPAL ---
+    if (razaElegida && razaElegida.rasgos) {
+        razaElegida.rasgos.forEach(rasgo => {
+            if (rasgo.efectos) {
+                rasgo.efectos.forEach(efecto => {
+                    if (efecto.tipoDeEfecto === "bono_stat") {
+                        // Sumamos el valor a la estadística del personaje (soportando ambas nomenclaturas)
+                        personajeConBonos[efecto.statAfectada] += (efecto.valor || efecto.valorDelBono || 0);
+                    }
+                });
             }
-        }
-    });
-});
+        });
+    }
+
+    // --- ¡LO NUEVO! 2. APLICAMOS BONOS DE LA SUBRAZA ---
+    if (subrazaElegida && subrazaElegida.rasgos) {
+        subrazaElegida.rasgos.forEach(rasgo => {
+            if (rasgo.efectos) {
+                rasgo.efectos.forEach(efecto => {
+                    if (efecto.tipoDeEfecto === "bono_stat") {
+                        // Hacemos exactamente lo mismo: sumar a la estadística
+                        personajeConBonos[efecto.statAfectada] += (efecto.valor || efecto.valorDelBono || 0);
+                    }
+                });
+            }
+        });
+    }
 }
 if (razaElegida) {
-aplicarBonosDeRasgosDeRaza(personajeConBonos, razaElegida);
+aplicarBonosDeRasgosDeRaza();
 }
 
 document.getElementById("FUE").innerText = personajeConBonos.FUE;
@@ -91,7 +117,7 @@ document.getElementById("mod-SAB").innerText = calcularModificador(personajeConB
 document.getElementById("mod-CAR").innerText = calcularModificador(personajeConBonos.CAR);
 ///////////////////////////////////////////////////////////////////
 document.getElementById("nombre-personaje").innerText = personajeActual.nombre;
-document.getElementById("info-personaje").innerText = personajeActual.raza + ", " + personajeActual.clase + " " + personajeActual.nivel;
+document.getElementById("info-personaje").innerText = personajeActual.raza + ", " + personajeActual.clase1 + " " + personajeActual.nivel;
 document.getElementById("BC").innerText = "+" + bonifCompetencia;
 
 let modFUE = calcularModificadorNumero(personajeConBonos.FUE);
@@ -110,25 +136,105 @@ function seCumpleCondicion(condicion, estado) {
   return true;
 }
 
-function sumaDeEfectos(tipo, entidades, estado) {
-  return entidades
-    .flatMap(entidad => entidad?.rasgos || [])
-    .flatMap(rasgo => rasgo.efectos || [])
-    .filter(efecto => efecto.tipoDeEfecto === tipo)
-    .filter(efecto => seCumpleCondicion(efecto.condicion, estado))
-    .reduce((total, efecto) => {
-      let valor = Number(efecto.valor);
-      return total + (Number.isFinite(valor) ? valor : 0);
-    }, 0);
+function sumaDeEfectos(tipoDeEfecto, propiedadFiltro = null, valorFiltro = null) {
+let total = 0;
+
+    // --- 1. ESCANEAR RAZA ---
+    if (razaElegida && razaElegida.rasgos) {
+        razaElegida.rasgos.forEach(rasgo => {
+            if (rasgo.efectos) {
+                rasgo.efectos.forEach(efecto => {
+                    if (efecto.tipoDeEfecto === tipoDeEfecto) {
+                        if (!propiedadFiltro || efecto[propiedadFiltro] === valorFiltro) {
+                            total += efecto.valor || efecto.valorDelBono || 0;
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    // --- 2. ESCANEAR SUBRAZA ---
+    if (subrazaElegida && subrazaElegida.rasgos) {
+        subrazaElegida.rasgos.forEach(rasgo => {
+            if (rasgo.efectos) {
+                rasgo.efectos.forEach(efecto => {
+                  console.log(`COMPARANDO: El sistema busca [${tipoDeEfecto}] y el rasgo tiene [${efecto.tipoDeEfecto}]`);
+                    if (efecto.tipoDeEfecto === tipoDeEfecto) {
+                      console.log("5. Encontré un efecto del tipo que busco en la subraza:", efecto);
+                        // Filtramos si requiere alguna propiedad específica (como la stat afectada)
+                        if (!propiedadFiltro || efecto[propiedadFiltro] === valorFiltro) {
+                            // Sumamos el valor del bono (soportando ambas nomenclaturas que usas)
+                            total += efecto.valor || efecto.valorDelBono || 0;
+                            console.log(`6. Sumando bono de subraza ${subrazaElegida.nombre}:`, efecto.valor || efecto.valorDelBono || 0, "Total actual:", total);
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    // --- 3. ESCANEAR clase1 ---
+    if (claseElegida && claseElegida.rasgos) {
+        claseElegida.rasgos.forEach(rasgo => {
+            // Verificar nivel si el rasgo lo requiere
+            if (!rasgo.nivelClase || personajeActual.nivel >= rasgo.nivelClase) {
+                if (rasgo.efectos) {
+                    rasgo.efectos.forEach(efecto => {
+                        if (efecto.tipoDeEfecto === tipoDeEfecto) {
+                            if (!propiedadFiltro || efecto[propiedadFiltro] === valorFiltro) {
+                                total += efecto.valor || efecto.valorDelBono || 0;
+                            }
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    return total;
 }
-function buscarEfecto(entidad, tipo) {
-  if (!entidad || !Array.isArray(entidad.rasgos)) return undefined;
-  return entidad.rasgos
-    .flatMap(rasgo => rasgo.efectos || [])
-    .find(efecto => efecto.tipoDeEfecto === tipo);
+function buscarEfecto(tipoDeEfecto) {
+    let efectoEncontrado = null;
+
+    // --- 1. BUSCAR EN RAZA ---
+    if (razaElegida && razaElegida.rasgos) {
+        razaElegida.rasgos.forEach(rasgo => {
+            if (rasgo.efectos) {
+                let ef = rasgo.efectos.find(e => e.tipoDeEfecto === tipoDeEfecto);
+                if (ef) efectoEncontrado = ef;
+            }
+        });
+    }
+    if (efectoEncontrado) return efectoEncontrado; // Si lo halló en la raza, lo devuelve ya
+
+    // --- BUSCAR EN SUBRAZA ---
+    if (subrazaElegida && subrazaElegida.rasgos) {
+        subrazaElegida.rasgos.forEach(rasgo => {
+            if (rasgo.efectos) {
+                let ef = rasgo.efectos.find(e => e.tipoDeEfecto === tipoDeEfecto);
+                if (ef) efectoEncontrado = ef;
+            }
+        });
+    }
+    if (efectoEncontrado) return efectoEncontrado; // Si lo halló en la subraza, lo devuelve
+
+    // --- 3. BUSCAR EN clase1 ---
+    if (claseElegida && claseElegida.rasgos) {
+        claseElegida.rasgos.forEach(rasgo => {
+            if (!rasgo.nivelClase || personajeActual.nivel >= rasgo.nivelClase) {
+                if (rasgo.efectos) {
+                    let ef = rasgo.efectos.find(e => e.tipoDeEfecto === tipoDeEfecto);
+                    if (ef) efectoEncontrado = ef;
+                }
+            }
+        });
+    }
+
+    return efectoEncontrado;
 }
 
-const efectos = [claseElegida, razaElegida];
+const efectos = [claseElegida, razaElegida, subrazaElegida].filter(Boolean);
 const equipo = [...(personajeConBonos.equipo || []), personajeConBonos.escudo].filter(Boolean);
 const bonoVelocidad = sumaDeEfectos("velocidad", efectos, estado);
 const bonoCARaza = sumaDeEfectos("bonoCA", efectos, estado);
@@ -146,7 +252,7 @@ if (claseElegida) {
   }
   personajeActual.hpActual = Math.min(personajeActual.hpActual, puntosDeGolpe);
   detalleEstadisticas.PG.items.push(
-    { origen: claseElegida.nombre || "Clase", valor: dado, descripcion: "Dado de golpe" },
+    { origen: claseElegida.nombre || "clase1", valor: dado, descripcion: "Dado de golpe" },
     { origen: "Modificador de Constitución", valor: modCON, descripcion: "CON final" }
   );
 
@@ -442,10 +548,10 @@ function calcularCA(personaje, armaduraElegida, claseElegida, razaElegida, equip
   }
 
   const bonoCAEquip = equipo
-    .map(id => libroDeReglas.equipo.find(item => item.id === id))
+    .map(id => libroDeReglasBasicas.equipo.find(item => item.id === id))
     .reduce((sum, item) => sum + (item?.bonifCA || 0), 0);
     let nombres = [...equipo.map(id => {
-      const item = libroDeReglas.equipo.find(e => e.id === id);
+      const item = libroDeReglasBasicas.equipo.find(e => e.id === id);
       return item ? item.nombre : null;
     }).filter(Boolean)];
 
@@ -493,7 +599,7 @@ const panelVentanas = document.querySelector(".panel-ventanas");
 // ── Contenido de cada pestaña ──────────────────
 
 function renderCompetencias() {
-  const clase = libroDeReglas.clases.find(c => c.id === personajeActual.clase);
+  const clase1 = libroDeReglasBasicas.clases.find(c => c.id === personajeActual.clase1);
   const BC = Math.ceil(1 + (personajeActual.nivel / 4)); // Bonificador de competencia
 
   // ── Stats base del personaje con bonos de raza ya aplicados ──
@@ -504,8 +610,8 @@ function renderCompetencias() {
   };
 
   // ── Bloque 1: Tiradas de Salvación ──
-  // Cada clase define en qué stats es competente para salvaciones
-  const salvacionesCompetentes = clase?.competencias?.salvaciones ?? [];
+  // Cada clase1 define en qué stats es competente para salvaciones
+  const salvacionesCompetentes = clase1?.competencias?.salvaciones ?? [];
 
   const TODAS_SALVACIONES = [
     { stat: "FUE", label: "Fuerza" },
@@ -551,9 +657,9 @@ function renderCompetencias() {
     { nombre: "Supervivencia",      stat: "SAB" },
   ];
 
-  // Las habilidades competentes vienen de la clase y la raza
+  // Las habilidades competentes vienen de la clase1 y la raza
   const habilidadesCompetentes = [
-    ...(clase?.competencias?.habilidades ?? []),
+    ...(clase1?.competencias?.habilidades ?? []),
     ...(razaElegida?.competencias?.habilidades ?? []),
   ];
 
@@ -570,12 +676,12 @@ function renderCompetencias() {
   }).join("");
 
   // ── Bloque 3: Otras competencias ──
-  const armas        = clase?.competencias?.armas        ?? "—";
-  const armaduras    = clase?.competencias?.armaduras    ?? "—";
-  const herramientas = clase?.competencias?.herramientas ?? "—";
+  const armas        = clase1?.competencias?.armas        ?? "—";
+  const armaduras    = clase1?.competencias?.armaduras    ?? "—";
+  const herramientas = clase1?.competencias?.herramientas ?? "—";
   const idiomas      = [
     ...(razaElegida?.idiomas ?? []),
-    ...(clase?.competencias?.idiomas ?? []),
+    ...(clase1?.competencias?.idiomas ?? []),
   ];
 
   panelVentanas.innerHTML = `
@@ -624,72 +730,174 @@ function renderCompetencias() {
   `;
 }
 
+// 1. Creamos un "bolsillo" temporal para guardar los rasgos que mostramos en pantalla
+let listaRasgosActuales = [];
+
+// 2. Nuestra nueva función constructora de la pestaña Rasgos
 function renderRasgos() {
-  const raza  = libroDeReglas.razas.find(r => r.id === personajeActual.raza.toLowerCase());
-  const clase = libroDeReglas.clases.find(c => c.id === personajeActual.clase);
+    listaRasgosActuales = [];
+    let contadorId = 0;
+    
+    let html = `
+        <h2 class="titulo-panel">Rasgos y Atributos</h2>
+        <div class="rasgos-contenedor-scroll" style="max-height: 75vh; overflow-y: auto; padding-right: 5px;">
+    `;
 
-  const rasgosClase = (clase?.rasgos ?? [])
-    .filter(r => !r.nivelClase || r.nivelClase <= personajeActual.nivel);
+    // ==========================================
+    // 1. SECCIÓN DE RAZA (Desplegable Principal)
+    // ==========================================
+    if (razaElegida) {
+        // La propiedad 'open' hace que arranque abierto por defecto. Si lo quitas, arrancará cerrado.
+        html += `<details open class="desplegable-seccion">
+                    <summary class="desplegable-titulo">Raza: ${razaElegida.nombre}</summary>
+                    <div class="desplegable-contenido">`;
+        
+        // Rasgos base de la Raza
+        if (razaElegida.rasgos && razaElegida.rasgos.length > 0) {
+            razaElegida.rasgos.forEach(rasgo => {
+                listaRasgosActuales.push({ ...rasgo, origen: razaElegida.nombre });
+                let resumen = rasgo.descripcionResum || (rasgo.descripcion ? rasgo.descripcion.substring(0, 60) + "..." : "Sin descripción.");
+                resumen = resumen.replace(/<br>|###|\*\*/g, ""); 
 
-  function tarjetaRasgo(r) {
-    // Escapamos las comillas para pasar los datos al onclick sin romper el HTML
-    const nombre = (r.nombre ?? "").replace(/'/g, "\\'");
-    const desc   = (r.descripcion ?? "").replace(/'/g, "\\'");
-    const nivel  = r.nivelClase ?? 0;
-
-    return `
-      <div class="rasgo-item clickable"
-           onclick="abrirPopupRasgo('${nombre}', ${nivel}, '${desc}')">
-        <div class="rasgo-fila">
-          <p class="rasgo-nombre">${r.nombre}</p>
-          ${r.nivelClase
-            ? `<span class="rasgo-nivel-badge">Nv ${r.nivelClase}</span>`
-            : ""}
-        </div>
-        ${r.descripcion
-          ? `<p class="rasgo-desc">${r.descripcion}</p>`
-          : ""}
-      </div>`;
-  }
-  function abrirPopupRasgo(titulo, nivel, descripcion) {
-    const contenido = document.getElementById("popup-rasgo-contenido");
-    const entradas = titulo ? [[titulo + (nivel ? ` (Nivel ${nivel})` : ""), { items: [{ origen: "Descripción", valor: descripcion, descripcion: "" }] }]] : [];
-        contenido.innerHTML = entradas
-            .map(([titulo, data]) => {
-                const itemsHtml = data.items.length
-                    ? data.items.map(item => `
-                        <div class="popup-item">
-                            <strong>${item.origen}</strong>: ${item.valor}
-                        </div>
-                    `).join("")
-                    : "<p>No hay descripción disponible.</p>";
-            
-                return `
-                    <section class="popup-seccion">
-                        <h3>${titulo}</h3>
-                        ${itemsHtml}
-                    </section>
+                html += `
+                    <div class="rasgo-tarjeta-boton" onclick="abrirPopupRasgo(${contadorId})">
+                        <div class="rasgo-tarjeta-titulo">${rasgo.nombre}</div>
+                        <div class="rasgo-tarjeta-resumen">${resumen}</div>
+                    </div>
                 `;
-            })
+                contadorId++;
+            });
+        }
+
+        // --- SUBRAZA (Desplegable Secundario anidado) ---
+        if (subrazaElegida && subrazaElegida.rasgos && subrazaElegida.rasgos.length > 0) {
+            html += `<details open class="desplegable-subseccion">
+                        <summary class="desplegable-subtitulo">Subraza: ${subrazaElegida.nombre}</summary>
+                        <div class="desplegable-contenido">`;
+            
+            subrazaElegida.rasgos.forEach(rasgo => {
+                listaRasgosActuales.push({ ...rasgo, origen: subrazaElegida.nombre });
+                let resumen = rasgo.descripcionResum || (rasgo.descripcion ? rasgo.descripcion.substring(0, 60) + "..." : "Sin descripción.");
+                resumen = resumen.replace(/<br>|###|\*\*/g, ""); 
+
+                html += `
+                    <div class="rasgo-tarjeta-boton" onclick="abrirPopupRasgo(${contadorId})">
+                        <div class="rasgo-tarjeta-titulo">${rasgo.nombre}</div>
+                        <div class="rasgo-tarjeta-resumen">${resumen}</div>
+                    </div>
+                `;
+                contadorId++;
+            });
+            html += `</div></details>`; // Cierra Subraza
+        }
+        
+        html += `</div></details>`; // Cierra Raza
+    }
+
+    // ==========================================
+    // 2. SECCIÓN DE CLASE (Desplegable Principal)
+    // ==========================================
+    if (claseElegida) {
+        html += `<details open class="desplegable-seccion" style="margin-top: 15px;">
+                    <summary class="desplegable-titulo">Clase: ${claseElegida.nombre}</summary>
+                    <div class="desplegable-contenido">`;
+        
+        // Rasgos base de la Clase
+        if (claseElegida.rasgos && claseElegida.rasgos.length > 0) {
+            let tieneRasgosClase = false;
+            claseElegida.rasgos.forEach(rasgo => {
+                if (!rasgo.nivelClase || personajeActual.nivel >= rasgo.nivelClase) {
+                    tieneRasgosClase = true;
+                    listaRasgosActuales.push({ ...rasgo, origen: claseElegida.nombre });
+                    let resumen = rasgo.descripcionResum || (rasgo.descripcion ? rasgo.descripcion.substring(0, 60) + "..." : "Sin descripción.");
+                    resumen = resumen.replace(/<br>|###|\*\*/g, "");
+
+                    html += `
+                        <div class="rasgo-tarjeta-boton" onclick="abrirPopupRasgo(${contadorId})">
+                            <div class="rasgo-tarjeta-titulo">
+                                ${rasgo.nombre} <span style="font-size: 11px; font-weight: normal; color: #8b7355;">(Nvl ${rasgo.nivelClase || 1})</span>
+                            </div>
+                            <div class="rasgo-tarjeta-resumen">${resumen}</div>
+                        </div>
+                    `;
+                    contadorId++;
+                }
+            });
+            
+            if (!tieneRasgosClase) {
+                html += `<p style="color: #776a62; font-style: italic; font-size: 13px; margin-left: 10px;">Aún no tienes rasgos desbloqueados para tu nivel.</p>`;
+            }
+        }
+
+        // --- SUBCLASE (Desplegable Secundario anidado) ---
+        if (subclaseElegida && subclaseElegida.rasgos && subclaseElegida.rasgos.length > 0) {
+            html += `<details open class="desplegable-subseccion">
+                        <summary class="desplegable-subtitulo">Subclase: ${subclaseElegida.nombre}</summary>
+                        <div class="desplegable-contenido">`;
+            
+            subclaseElegida.rasgos.forEach(rasgo => {
+                if (!rasgo.nivelClase || personajeActual.nivel >= rasgo.nivelClase) {
+                    listaRasgosActuales.push({ ...rasgo, origen: subclaseElegida.nombre });
+                    let resumen = rasgo.descripcionResum || (rasgo.descripcion ? rasgo.descripcion.substring(0, 60) + "..." : "Sin descripción.");
+                    resumen = resumen.replace(/<br>|###|\*\*/g, ""); 
+
+                    html += `
+                        <div class="rasgo-tarjeta-boton" onclick="abrirPopupRasgo(${contadorId})">
+                            <div class="rasgo-tarjeta-titulo">
+                                ${rasgo.nombre} <span style="font-size: 11px; font-weight: normal; color: #8b7355;">(Nvl ${rasgo.nivelClase || 1})</span>
+                            </div>
+                            <div class="rasgo-tarjeta-resumen">${resumen}</div>
+                        </div>
+                    `;
+                    contadorId++;
+                }
+            });
+            html += `</div></details>`; // Cierra Subclase
+        }
+        
+        html += `</div></details>`; // Cierra Clase
+    }
+
+    html += `</div>`; // Cierra el contenedor con scroll
+    document.querySelector(".panel-ventanas").innerHTML = html;
+}
+// --- FUNCIONES DEL POPUP DE RASGOS ---
+
+function abrirPopupRasgo(indice) {
+    let rasgo = listaRasgosActuales[indice];
+    if (!rasgo) return;
+    
+    let requisitosHTML = "";
+    if (rasgo.requisitos) {
+        requisitosHTML = `<p style="margin: 0 0 5px 0;"><strong>Requisitos:</strong> ${rasgo.requisitos}</p>`;
+    }
+    
+    // Armamos el contenido estructurado de arriba hacia abajo de forma natural
+    let contenido = `
+        <div style="text-align: left; display: flex; flex-direction: column; height: 100%;">
+            <h3 style="color: #5a4035; margin: 0 0 10px 0; border-bottom: 2px solid #5a4035; padding-bottom: 8px; font-family: Georgia, serif; font-size: 22px;">
+                ${rasgo.nombre}
+            </h3>
+            
+            <div style="background-color: #f3ead7; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; border: 1px solid #dccbb0; color: #5a4035;">
+                <p style="margin: 0 0 5px 0;"><strong>Origen del Atributo:</strong> ${rasgo.origen}</p>
+                ${requisitosHTML}
+            </div>
+            
+            <div style="line-height: 1.6; color: #2b2521; font-size: 14.5px; overflow-y: auto; max-height: 50vh; padding-right: 5px;">
+                ${rasgo.descripcion}
+            </div>
+        </div>
+    `;
+    
+    document.getElementById("popup-rasgo-contenido").innerHTML = contenido;
     document.getElementById("popup-rasgo").classList.remove("oculto");
-    }
-
-  function seccionRasgos(titulo, rasgos) {
-    if (!rasgos || rasgos.length === 0) return "";
-    return `
-      <div class="rasgos-seccion">
-        <h3 class="rasgos-titulo">${titulo}</h3>
-        ${rasgos.map(tarjetaRasgo).join("")}
-      </div>`;
-    }
-
-  panelVentanas.innerHTML = `
-    <h2 class="titulo-panel">Rasgos</h2>
-    ${seccionRasgos((raza?.nombre ?? ""), raza?.rasgos)}
-    ${seccionRasgos((clase?.nombre ?? ""), rasgosClase)}
-  `;
 }
 
+function cerrarPopupRasgo() {
+    // Para cerrar, simplemente le devolvemos la clase1 "oculto" al contenedor
+    document.getElementById("popup-rasgo").classList.add("oculto");
+}
 function renderHechizos() {
   // Placeholder — podés expandir esto con tu lista de hechizos
   panelVentanas.innerHTML = `
@@ -707,11 +915,11 @@ function renderEquipo() {
   const escudoId   = personajeActual.escudo;
 
   const objetos = inventario
-    .map(id => libroDeReglas.equipo.find(e => e.id === id))
+    .map(id => libroDeReglasBasicas.equipo.find(e => e.id === id))
     .filter(Boolean);
 
   const escudo = escudoId
-    ? libroDeReglas.equipo.find(e => e.id === escudoId)
+    ? libroDeReglasBasicas.equipo.find(e => e.id === escudoId)
     : null;
 
   const todosLosObjetos = [...objetos, ...(escudo ? [escudo] : [])];
