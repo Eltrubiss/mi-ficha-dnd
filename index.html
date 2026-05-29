@@ -401,11 +401,18 @@
             color: #5a4035;
             font-family: Georgia, serif;
         }
-        .build-campos {
+        .build-campos,
+        .build-nivel-controles {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 10px;
             margin-bottom: 12px;
+        }
+        .build-nivel-controles {
+            background: #fff8ed;
+            border: 1px solid #ead8c6;
+            border-radius: 10px;
+            padding: 10px;
         }
         .build-campo {
             display: flex;
@@ -425,6 +432,11 @@
             background: white;
             padding: 9px 10px;
             color: #3d2b20;
+        }
+        .build-pg-ayuda {
+            color: #6b5a53;
+            font-size: 12px;
+            line-height: 1.35;
         }
         .build-rasgos {
             display: flex;
@@ -595,6 +607,67 @@
         }
         .build-popup-opcion.bloqueada {
             opacity: 0.55;
+        }
+
+        .build-popup-rasgos {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .build-popup-rasgo-opcion {
+            align-items: flex-start;
+            background-color: #ffffff;
+            border: 1px solid #c8b9a6;
+            border-left: 4px solid #5a4035;
+            border-radius: 8px;
+            cursor: pointer;
+            display: grid;
+            gap: 10px;
+            grid-template-columns: auto 1fr;
+            padding: 10px 14px;
+            text-align: left;
+            transition: all 0.18s ease-in-out;
+        }
+        .build-popup-rasgo-opcion:hover {
+            background-color: #fdfaf5;
+            border-left-color: #df702c;
+            transform: translateX(2px);
+        }
+        .build-popup-rasgo-opcion.seleccionado {
+            border-left-color: #df702c;
+            background-color: #fff8ed;
+        }
+        .build-popup-rasgo-opcion.bloqueada {
+            opacity: 0.6;
+        }
+        .build-popup-checkbox {
+            accent-color: #df702c;
+            cursor: pointer;
+            height: 18px;
+            margin-top: 2px;
+            width: 18px;
+        }
+        .build-popup-rasgo-titulo {
+            color: #5a4035;
+            font-family: Georgia, serif;
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+        .build-popup-rasgo-resumen {
+            color: #6b5a53;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .build-popup-volver {
+            background: #bea98d;
+            border: none;
+            border-radius: 8px;
+            color: #3d2b20;
+            cursor: pointer;
+            font-weight: 700;
+            margin-bottom: 12px;
+            padding: 8px 10px;
         }
         .build-alerta {
             background: #ffe6e1;
@@ -974,7 +1047,6 @@
             <p class="Info-personaje" id="info-personaje">[Raza], [Clase] [Nivel]</p>
         </div>
         <div class="controles-personaje">
-            <label for="selectorNivelPersonaje">Nivel</label>
             <select id="selectorNivelPersonaje" aria-label="Seleccionar nivel del personaje"></select>
         </div>
         <div class="acciones-personaje">

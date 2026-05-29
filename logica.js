@@ -22,7 +22,9 @@ const personajePorDefecto = {
   hpActual: 0,
   hpTemporales: 0,
   inspiracion: false,
-  eleccionesRasgos: {}
+  eleccionesRasgos: {},
+  progresionNiveles: {},
+  pgPorNivel: {}
 };
 
 const personajeActual = window.personajeActual || personajePorDefecto;
@@ -77,7 +79,167 @@ function subirNivelDeClase(numeroSlot) {
 function calcularBonificadorCompetencia(nivelTotal = personajeActual.nivel) {
   return Math.ceil(1 + (nivelTotal / 4));
 }
+function asegurarDatosBuildPersonaje() {
+  if (!personajeActual.progresionNiveles) personajeActual.progresionNiveles = {};
+  if (!personajeActual.pgPorNivel) personajeActual.pgPorNivel = {};
+}
 
+function obtenerClasePorId(claseId) {
+  return claseId ? libroDeReglasBasicas.clases.find(c => c.id === claseId) : null;
+}
+
+function obtenerClaseNivelPersonaje(nivel) {
+  if (nivel === 1) return personajeActual.clase1 || "";
+  return personajeActual.progresionNiveles?.[nivel]?.clase || "";
+}
+
+function obtenerDadoGolpeDeClase(claseId) {
+  return obtenerClasePorId(claseId)?.dadoDeGolpe || 0;
+}
+
+function inicializarProgresionDesdeClases() {
+  asegurarDatosBuildPersonaje();
+  if (Object.keys(personajeActual.progresionNiveles).length > 0) return;
+
+  let nivelPersonaje = 2;
+  [
+    { claseId: personajeActual.clase1, niveles: normalizarNivelClase(personajeActual.nivelClase1) - 1 },
+    { claseId: personajeActual.clase2, niveles: normalizarNivelClase(personajeActual.nivelClase2) },
+    { claseId: personajeActual.clase3, niveles: normalizarNivelClase(personajeActual.nivelClase3) }
+  ].forEach(({ claseId, niveles }) => {
+    for (let i = 0; i < niveles && nivelPersonaje <= 20; i++) {
+      if (claseId) personajeActual.progresionNiveles[nivelPersonaje] = { clase: claseId };
+      nivelPersonaje++;
+    }
+  });
+}
+
+function recalcularClasesDesdeProgresion() {
+  asegurarDatosBuildPersonaje();
+  const conteos = new Map();
+  const clasePrincipal = personajeActual.clase1 || "";
+
+  if (clasePrincipal) conteos.set(clasePrincipal, 1);
+
+  for (let nivel = 2; nivel <= 20; nivel++) {
+    const claseId = personajeActual.progresionNiveles[nivel]?.clase;
+    if (!claseId) continue;
+    conteos.set(claseId, (conteos.get(claseId) || 0) + 1);
+  }
+
+  const entradas = [...conteos.entries()];
+  const principal = entradas.find(([claseId]) => claseId === clasePrincipal) || entradas[0] || [clasePrincipal, clasePrincipal ? 1 : 0];
+  const secundarias = entradas.filter(([claseId]) => claseId !== principal[0]);
+
+  personajeActual.clase1 = principal[0] || personajeActual.clase1;
+  personajeActual.nivelClase1 = principal[1] || 1;
+  personajeActual.clase2 = secundarias[0]?.[0] || "";
+  personajeActual.nivelClase2 = secundarias[0]?.[1] || 0;
+  personajeActual.clase3 = secundarias[1]?.[0] || "";
+  personajeActual.nivelClase3 = secundarias[1]?.[1] || 0;
+
+  sincronizarNivelPersonajeDesdeClases();
+  claseElegida = obtenerClasePorId(personajeActual.clase1);
+  clasesActivas = obtenerSlotsClases();
+  personajeConBonos = { ...personajeConBonos, nivel: personajeActual.nivel };
+}
+
+function contarNivelClaseHastaNivelPersonaje(claseId, nivelPersonaje) {
+  if (!claseId) return 0;
+  let total = personajeActual.clase1 === claseId ? 1 : 0;
+  for (let nivel = 2; nivel <= nivelPersonaje; nivel++) {
+    if (personajeActual.progresionNiveles?.[nivel]?.clase === claseId) total++;
+  }
+  return total;
+}
+
+
+function obtenerSlotActivoPorClaseId(claseId) {
+  return clasesActivas.find(slot => slot.claseId === claseId) || null;
+}
+
+function obtenerContextoClasePorId(claseId) {
+  const slot = obtenerSlotActivoPorClaseId(claseId);
+  return slot ? `clase${slot.numeroSlot}` : "clase1";
+}
+
+function obtenerRasgosClaseEnNivelPersonaje(nivelPersonaje, claseId) {
+  const clase = obtenerClasePorId(claseId);
+  if (!clase?.rasgos) return [];
+
+  const nivelClase = contarNivelClaseHastaNivelPersonaje(claseId, nivelPersonaje);
+  return clase.rasgos.filter(rasgo => (rasgo.nivelClase || 1) === nivelClase);
+}
+
+function ajustarProgresionANivelTotal(nuevoNivelTotal) {
+  asegurarDatosBuildPersonaje();
+  const nivelObjetivo = Math.max(1, Math.min(20, Number(nuevoNivelTotal) || 1));
+  const claseBase = personajeActual.clase1 || libroDeReglasBasicas.clases[0]?.id || "";
+
+  for (let nivel = 2; nivel <= nivelObjetivo; nivel++) {
+    if (!personajeActual.progresionNiveles[nivel]?.clase && claseBase) {
+      personajeActual.progresionNiveles[nivel] = { clase: claseBase };
+    }
+  }
+
+  for (let nivel = nivelObjetivo + 1; nivel <= 20; nivel++) {
+    delete personajeActual.progresionNiveles[nivel];
+    delete personajeActual.pgPorNivel[nivel];
+  }
+
+  recalcularClasesDesdeProgresion();
+}
+
+function obtenerValorPGNivel(nivel, claseId) {
+  const dado = obtenerDadoGolpeDeClase(claseId);
+  if (!dado) return 0;
+  const guardado = Number(personajeActual.pgPorNivel?.[nivel]);
+  if (Number.isFinite(guardado) && guardado > 0) return Math.min(guardado, dado);
+  return 1;
+}
+
+function calcularPuntosGolpeMaximos() {
+  asegurarDatosBuildPersonaje();
+  const items = [];
+  let total = 0;
+  const claseNivel1 = obtenerClasePorId(personajeActual.clase1);
+
+  if (claseNivel1) {
+    const valorNivel1 = Math.max(1, claseNivel1.dadoDeGolpe + modCON);
+    total += valorNivel1;
+    items.push({ origen: `${claseNivel1.nombre} nivel 1`, valor: valorNivel1, descripcion: `${claseNivel1.dadoDeGolpe} dado máximo + ${modCON} CON` });
+  }
+
+  for (let nivel = 2; nivel <= 20; nivel++) {
+    const claseId = personajeActual.progresionNiveles[nivel]?.clase;
+    if (!claseId) continue;
+    const clase = obtenerClasePorId(claseId);
+    if (!clase) continue;
+    const tirada = obtenerValorPGNivel(nivel, claseId);
+    const valorNivel = Math.max(1, tirada + modCON);
+    total += valorNivel;
+    items.push({ origen: `Nivel ${nivel} (${clase.nombre})`, valor: valorNivel, descripcion: `${tirada} PG de dado + ${modCON} CON` });
+  }
+
+  return { total, items };
+}
+
+function actualizarPuntosGolpe() {
+  const resultadoPG = calcularPuntosGolpeMaximos();
+  detalleEstadisticas.PG.total = resultadoPG.total;
+  detalleEstadisticas.PG.items = resultadoPG.items;
+
+  if (typeof personajeActual.hpActual !== "number" || personajeActual.hpActual <= 0) {
+    personajeActual.hpActual = resultadoPG.total;
+  }
+  personajeActual.hpActual = Math.min(personajeActual.hpActual, resultadoPG.total);
+
+  const pgElemento = document.getElementById("PG");
+  if (pgElemento) pgElemento.innerText = resultadoPG.total;
+}
+
+asegurarDatosBuildPersonaje();
+inicializarProgresionDesdeClases();
 sincronizarNivelPersonajeDesdeClases();
 
 let personajeConBonos = { ...personajeActual };
@@ -293,7 +455,15 @@ function buscarEfecto(tipoDeEfecto) {
             }
         });
     }
-    if (efectoEncontrado) return efectoEncontrado; // Si lo halló en la subraza, lo devuelve
+    if (efectoEncontrado) return efectoEncontrado;
+
+    // --- 3. BUSCAR EN CLASES ACTIVAS Y OPCIONES SELECCIONADAS ---
+    [...obtenerRasgosDeClasesDisponibles(), ...obtenerOpcionesSeleccionadasDisponibles()].forEach(rasgo => {
+        if (rasgo.efectos) {
+            let ef = rasgo.efectos.find(e => e.tipoDeEfecto === tipoDeEfecto);
+            if (ef) efectoEncontrado = { ...ef, nombre: rasgo.nombre, origen: rasgo.origen };
+        }
+    });
 
     return efectoEncontrado;
 }
@@ -307,22 +477,7 @@ const bonoIniciativa = sumaDeEfectos("iniciativa", efectos, estado);
 const iniciativaTotal = modDES + bonoIniciativa;
 
 ///////////////////// CÁLCULO DE PUNTOS DE GOLPE /////////////////////
-if (claseElegida) {
-  let dado = claseElegida.dadoDeGolpe;
-  let puntosDeGolpe = dado + (modCON * personajeConBonos.nivel);
-
-  detalleEstadisticas.PG.total = puntosDeGolpe;
-  if (typeof personajeActual.hpActual !== "number") {
-    personajeActual.hpActual = puntosDeGolpe;
-  }
-  personajeActual.hpActual = Math.min(personajeActual.hpActual, puntosDeGolpe);
-  detalleEstadisticas.PG.items.push(
-    { origen: claseElegida.nombre || "clase1", valor: dado, descripcion: "Dado de golpe" },
-    { origen: "Modificador de Constitución", valor: modCON, descripcion: "CON final" }
-  );
-
-  document.getElementById("PG").innerText = puntosDeGolpe;
-}
+actualizarPuntosGolpe();
 ///////////////////// CÁLCULO DE INICIATIVA /////////////////////
 detalleEstadisticas.Iniciativa.total = iniciativaTotal;
 detalleEstadisticas.Iniciativa.items.push({
@@ -693,8 +848,9 @@ function obtenerHabilidadesElegidasDesdeRasgos() {
       .filter(seleccion => seleccion.tipo === "habilidad")
       .forEach(seleccion => {
         const idsElegidas = obtenerOpcionesElegidas(rasgo, seleccion, contexto);
+        const opcionesDisponibles = resolverOpcionesSeleccion(seleccion, contexto);
         idsElegidas.forEach(id => {
-          const opcion = (seleccion.opciones || []).find(item => item.id === id);
+          const opcion = opcionesDisponibles.find(item => item.id === id);
           if (opcion?.nombre) habilidadesElegidas.push(opcion.nombre);
         });
       });
@@ -717,7 +873,8 @@ function obtenerHabilidadesDesdeEfectos() {
   const rasgosConEfectos = [
     ...(razaElegida?.rasgos || []),
     ...(subrazaElegida?.rasgos || []),
-    ...obtenerRasgosDeClasesDisponibles()
+    ...obtenerRasgosDeClasesDisponibles(),
+    ...obtenerOpcionesSeleccionadasDisponibles()
   ];
 
   return rasgosConEfectos.flatMap(rasgo => (rasgo.efectos || [])
@@ -1080,7 +1237,31 @@ function renderPopupSeleccionBuild(indice) {
   const elegidas = obtenerOpcionesElegidas(rasgo, seleccion, contexto);
   const restantes = Math.max(0, (seleccion.cantidadSeleccionable || 0) - elegidas.length);
 
-  const opcionesHTML = (seleccion.opciones || []).map(opcion => {
+  const opciones = resolverOpcionesSeleccion(seleccion, contexto);
+  const usarFormatoHabilidades = seleccion.tipo === "habilidad";
+
+  const opcionesHTML = usarFormatoHabilidades
+    ? renderOpcionesHabilidadSeleccionBuild(indice, opciones, elegidas, restantes)
+    : renderOpcionesRasgoSeleccionBuild(indice, opciones, elegidas, restantes);
+
+  document.getElementById("popup-rasgo-contenido").innerHTML = `
+    <div style="text-align:left;">
+      <h3 style="color:#5a4035; margin:0 0 10px; border-bottom:2px solid #5a4035; padding-bottom:8px; font-family:Georgia, serif; font-size:22px;">
+        ${textoSeguro(seleccion.nombre)}
+      </h3>
+      <p style="color:#6b5a53; margin:0 0 12px;">${textoSeguro(seleccion.descripcion || rasgo.nombre || "Selecciona opciones")}</p>
+      <div class="build-popup-contador">
+        Puedes marcar ${seleccion.cantidadSeleccionable} ${textoSeguro(textoTipoSeleccion(seleccion))}. Restantes: ${restantes}
+      </div>
+      <div class="${usarFormatoHabilidades ? "build-popup-opciones" : "build-popup-rasgos"}">
+        ${opcionesHTML || `<p style="color:#6b5a53;">No hay opciones cargadas todavía.</p>`}
+      </div>
+    </div>
+  `;
+}
+
+function renderOpcionesHabilidadSeleccionBuild(indice, opciones, elegidas, restantes) {
+  return opciones.map(opcion => {
     const seleccionada = elegidas.includes(opcion.id);
     const bloqueada = !seleccionada && restantes === 0;
     const claseFila = `comp-fila build-popup-opcion ${seleccionada ? "competente" : ""} ${bloqueada ? "bloqueada" : ""}`;
@@ -1092,23 +1273,73 @@ function renderPopupSeleccionBuild(indice) {
       </div>
     `;
   }).join("");
+}
+
+function renderOpcionesRasgoSeleccionBuild(indice, opciones, elegidas, restantes) {
+  return opciones.map(opcion => {
+    const seleccionada = elegidas.includes(opcion.id);
+    const bloqueada = !seleccionada && restantes === 0;
+    const resumen = opcion.descripcionResum || (opcion.descripcion ? opcion.descripcion.replace(/<[^>]*>/g, "").slice(0, 90) + "..." : "Sin descripción.");
+
+    return `
+      <div class="build-popup-rasgo-opcion ${seleccionada ? "seleccionado" : ""} ${bloqueada ? "bloqueada" : ""}" onclick="abrirPopupOpcionSeleccionBuild(${indice}, '${textoSeguro(opcion.id)}')">
+        <input
+          class="build-popup-checkbox"
+          type="checkbox"
+          ${seleccionada ? "checked" : ""}
+          onclick="event.stopPropagation(); toggleOpcionSeleccionBuild(${indice}, '${textoSeguro(opcion.id)}')"
+          aria-label="Seleccionar ${textoSeguro(opcion.nombre)}"
+        />
+        <div>
+          <div class="build-popup-rasgo-titulo">${textoSeguro(opcion.nombre)}</div>
+          <div class="build-popup-rasgo-resumen">${textoSeguro(resumen)}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function abrirPopupOpcionSeleccionBuild(indice, opcionId) {
+  const item = listaSeleccionesBuildActuales[indice];
+  if (!item) return;
+
+  const { seleccion, contexto } = item;
+  const opcion = resolverOpcionesSeleccion(seleccion, contexto).find(item => item.id === opcionId);
+  if (!opcion) return;
+
+  const elegidas = obtenerOpcionesElegidas(item.rasgo, seleccion, contexto);
+  const seleccionada = elegidas.includes(opcion.id);
+  const restantes = Math.max(0, (seleccion.cantidadSeleccionable || 0) - elegidas.length);
+  const bloqueada = !seleccionada && restantes === 0;
+  const requisitosHTML = opcion.requisitos
+    ? `<p style="margin: 0 0 5px 0;"><strong>Requisitos:</strong> ${textoSeguro(JSON.stringify(opcion.requisitos))}</p>`
+    : "";
 
   document.getElementById("popup-rasgo-contenido").innerHTML = `
-    <div style="text-align:left;">
+    <div style="text-align:left; display:flex; flex-direction:column; height:100%;">
+      <button class="build-popup-volver" type="button" onclick="renderPopupSeleccionBuild(${indice})">← Volver a ${textoSeguro(seleccion.nombre)}</button>
       <h3 style="color:#5a4035; margin:0 0 10px; border-bottom:2px solid #5a4035; padding-bottom:8px; font-family:Georgia, serif; font-size:22px;">
-        ${textoSeguro(seleccion.nombre)}
+        ${textoSeguro(opcion.nombre)}
       </h3>
-      <p style="color:#6b5a53; margin:0 0 12px;">${textoSeguro(seleccion.descripcion || rasgo.nombre || "Selecciona opciones")}</p>
-      <div class="build-popup-contador">
-        Puedes marcar ${seleccion.cantidadSeleccionable} ${textoSeguro(textoTipoSeleccion(seleccion))}. Restantes: ${restantes}
+      <div style="background-color:#f3ead7; padding:10px; border-radius:6px; margin-bottom:15px; font-size:13px; border:1px solid #dccbb0; color:#5a4035;">
+        <p style="margin:0 0 5px;"><strong>Selección:</strong> ${textoSeguro(seleccion.nombre)}</p>
+        ${requisitosHTML}
+        <label class="comp-fila ${seleccionada ? "competente" : ""} ${bloqueada ? "bloqueada" : ""}" style="cursor:pointer; margin-top:8px;">
+          <input
+            class="build-popup-checkbox"
+            type="checkbox"
+            ${seleccionada ? "checked" : ""}
+            onclick="toggleOpcionSeleccionBuild(${indice}, '${textoSeguro(opcion.id)}'); abrirPopupOpcionSeleccionBuild(${indice}, '${textoSeguro(opcion.id)}')"
+          />
+          <span class="comp-nombre">${seleccionada ? "Seleccionado" : "Seleccionar"}</span>
+        </label>
       </div>
-      <div class="build-popup-opciones">
-        ${opcionesHTML || `<p style="color:#6b5a53;">No hay opciones cargadas todavía.</p>`}
+      <div style="line-height:1.6; color:#2b2521; font-size:14.5px; overflow-y:auto; max-height:50vh; padding-right:5px;">
+        ${opcion.descripcion || opcion.descripcionResum || "Sin descripción."}
       </div>
     </div>
   `;
 }
-
 function toggleOpcionSeleccionBuild(indice, opcionId) {
   const item = listaSeleccionesBuildActuales[indice];
   if (!item) return;
@@ -1264,6 +1495,73 @@ function obtenerOpcionesElegidas(rasgo, seleccion, contexto) {
   return Array.isArray(elecciones) ? elecciones : [];
 }
 
+function obtenerValorPorRuta(objeto, ruta) {
+  if (!ruta) return null;
+  return ruta.split(".").reduce((actual, parte) => actual?.[parte], objeto);
+}
+
+function obtenerClaseIdDesdeContexto(contexto) {
+  const match = String(contexto || "").match(/^clase(\d+)$/);
+  if (!match) return null;
+
+  const numeroSlot = Number(match[1]);
+  return clasesActivas.find(slot => slot.numeroSlot === numeroSlot)?.claseId || null;
+}
+
+function opcionPasaFiltrosSeleccion(opcion, seleccion, contexto = "general") {
+  const fuente = seleccion.fuenteOpciones || {};
+  const claseId = obtenerClaseIdDesdeContexto(contexto);
+
+  if (Array.isArray(fuente.incluirIds) && !fuente.incluirIds.includes(opcion.id)) return false;
+  if (Array.isArray(fuente.excluirIds) && fuente.excluirIds.includes(opcion.id)) return false;
+  if (Array.isArray(opcion.clasesPermitidas) && claseId && !opcion.clasesPermitidas.includes(claseId)) return false;
+  if (Array.isArray(opcion.clasesExcluidas) && claseId && opcion.clasesExcluidas.includes(claseId)) return false;
+
+  return true;
+}
+
+function resolverOpcionesSeleccion(seleccion, contexto = "general") {
+  const opcionesDirectas = Array.isArray(seleccion.opciones) ? seleccion.opciones : [];
+  const opcionesDesdeFuente = seleccion.fuenteOpciones?.coleccion
+    ? obtenerValorPorRuta(libroDeReglasBasicas, seleccion.fuenteOpciones.coleccion)
+    : [];
+  const opciones = opcionesDirectas.length ? opcionesDirectas : (Array.isArray(opcionesDesdeFuente) ? opcionesDesdeFuente : []);
+
+  return opciones.filter(opcion => opcionPasaFiltrosSeleccion(opcion, seleccion, contexto));
+}
+
+function obtenerOpcionesSeleccionadasDeRasgo(rasgo, contexto = "general", origen = "") {
+  return obtenerSeleccionesDeRasgo(rasgo).flatMap(seleccion => {
+    const idsElegidas = obtenerOpcionesElegidas(rasgo, seleccion, contexto);
+    const opcionesDisponibles = resolverOpcionesSeleccion(seleccion, contexto);
+
+    return idsElegidas
+      .map(id => opcionesDisponibles.find(opcion => opcion.id === id))
+      .filter(Boolean)
+      .map(opcion => ({
+        ...opcion,
+        origen: origen || rasgo.nombre,
+        rasgoOrigen: rasgo.nombre,
+        seleccionOrigen: seleccion.nombre
+      }));
+  });
+}
+
+function obtenerOpcionesSeleccionadasDisponibles() {
+  const opcionesRaza = (razaElegida?.rasgos || [])
+    .flatMap(rasgo => obtenerOpcionesSeleccionadasDeRasgo(rasgo, "raza", razaElegida.nombre));
+  const opcionesSubraza = (subrazaElegida?.rasgos || [])
+    .flatMap(rasgo => obtenerOpcionesSeleccionadasDeRasgo(rasgo, "subraza", subrazaElegida.nombre));
+  const opcionesClase = clasesActivas.flatMap(slot => {
+    if (!slot.clase || slot.nivel <= 0) return [];
+
+    return (slot.clase.rasgos || [])
+      .filter(rasgo => rasgoDisponiblePorNivelClase(rasgo, slot.nivel))
+      .flatMap(rasgo => obtenerOpcionesSeleccionadasDeRasgo(rasgo, `clase${slot.numeroSlot}`, slot.clase.nombre));
+  });
+
+  return [...opcionesRaza, ...opcionesSubraza, ...opcionesClase];
+}
 function contarPendientesDeRasgo(rasgo, contexto = "general") {
   return obtenerSeleccionesDeRasgo(rasgo).reduce((total, seleccion) => {
     const cantidadNecesaria = seleccion.cantidadSeleccionable || 0;
@@ -1293,7 +1591,7 @@ function renderResumenSeleccionesRasgo(rasgo, contexto = "general") {
   return selecciones.map(seleccion => {
     const elegidas = obtenerOpcionesElegidas(rasgo, seleccion, contexto);
     const pendientes = Math.max(0, (seleccion.cantidadSeleccionable || 0) - elegidas.length);
-    const opciones = (seleccion.opciones || []).map(opcion => opcion.nombre).join(", ");
+    const opciones = resolverOpcionesSeleccion(seleccion, contexto).map(opcion => opcion.nombre).join(", ");
 
     return `
       <div class="build-seleccion">
@@ -1346,7 +1644,7 @@ function registrarSeleccionBuild(rasgo, seleccion, contexto, origen) {
 function obtenerNombresOpcionesSeleccionadas(rasgo, seleccion, contexto) {
   const idsElegidas = obtenerOpcionesElegidas(rasgo, seleccion, contexto);
   return idsElegidas
-    .map(id => (seleccion.opciones || []).find(opcion => opcion.id === id)?.nombre)
+    .map(id => resolverOpcionesSeleccion(seleccion, contexto).find(opcion => opcion.id === id)?.nombre)
     .filter(Boolean);
 }
 
@@ -1359,7 +1657,7 @@ function renderExtensionSeleccionBuild(rasgo, seleccion, contexto, origen) {
     : `<span class="build-completo">Completo</span>`;
   const etiquetasHTML = elegidas.length
     ? `<div class="build-seleccion-tags">${elegidas.map(nombre => `<span class="build-seleccion-tag">${textoSeguro(nombre)}</span>`).join("")}</div>`
-    : `<small>${textoSeguro((seleccion.opciones || []).map(opcion => opcion.nombre).join(", "))}</small>`;
+    : `<small>${textoSeguro(resolverOpcionesSeleccion(seleccion, contexto).map(opcion => opcion.nombre).join(", "))}</small>`;
   const botonHTML = elegidas.length
     ? `<button type="button" class="build-reseleccionar">Reseleccionar opciones</button>`
     : "";
@@ -1445,16 +1743,44 @@ function renderNivelUnoBuild() {
 }
 
 function renderNivelClaseBuild(nivel) {
-  const rasgos = obtenerRasgosClasePorNivel(nivel);
-    const nombreClase = clasesActivas[0]?.clase?.nombre || "Clase";
+  const claseId = obtenerClaseNivelPersonaje(nivel);
+  const clase = obtenerClasePorId(claseId);
+  const dadoGolpe = clase?.dadoDeGolpe || 0;
+  const valorPG = claseId ? obtenerValorPGNivel(nivel, claseId) : "";
+  const nivelClase = claseId ? contarNivelClaseHastaNivelPersonaje(claseId, nivel) : 0;
+  const rasgos = claseId ? obtenerRasgosClaseEnNivelPersonaje(nivel, claseId) : [];
+  const contextoClase = obtenerContextoClasePorId(claseId);
+  const opcionesClase = `<option value="">Sin clase en este nivel</option>${renderOpcionesSeleccion(libroDeReglasBasicas.clases, claseId)}`;
 
   return `
     <section class="build-nivel ${personajeActual.nivel === nivel ? "actual" : ""}">
       <h3>Nivel ${nivel}</h3>
+      <div class="build-nivel-controles">
+        <div class="build-campo">
+          <label for="buildClaseNivel-${nivel}">Clase de este nivel</label>
+          <select id="buildClaseNivel-${nivel}" class="build-clase-nivel" data-nivel="${nivel}">${opcionesClase}</select>
+        </div>
+        <div class="build-campo">
+          <label for="buildPGNivel-${nivel}">PG del dado</label>
+          <input
+            id="buildPGNivel-${nivel}"
+            class="build-pg-nivel"
+            data-nivel="${nivel}"
+            type="number"
+            min="1"
+            max="${dadoGolpe || 1}"
+            value="${valorPG}"
+            ${claseId ? "" : "disabled"}
+            placeholder="${dadoGolpe ? `1-${dadoGolpe}` : "Elige clase"}">
+          <small class="build-pg-ayuda">${clase ? `Máximo d${dadoGolpe}. Se suma CON al total.` : "Elige una clase para activar este nivel."}</small>
+        </div>
+      </div>
       <div class="build-rasgos-columna">
-        ${rasgos.length
-          ? renderSeccionRasgosBuild(`Clase: ${nombreClase}`, rasgos, "clase1")
-          : `<span class="build-rasgo">Pendiente de cargar rasgos para este nivel</span>`}
+        ${clase
+          ? (rasgos.length
+            ? renderSeccionRasgosBuild(`${clase.nombre}: nivel de clase ${nivelClase}`, rasgos, contextoClase)
+            : `<span class="build-rasgo">${textoSeguro(clase.nombre)} no desbloquea rasgos nuevos en su nivel de clase ${nivelClase}.</span>`)
+          : `<span class="build-rasgo">Selecciona una clase para este nivel.</span>`}
       </div>
     </section>
   `;
@@ -1480,12 +1806,88 @@ function renderBuildPersonaje() {
 }
 
 function actualizarResumenPersonaje() {
+  sincronizarNivelPersonajeDesdeClases();
+  clasesActivas = obtenerSlotsClases();
+
   const razaNombre = razaElegida?.nombre || personajeActual.raza || "Raza";
-  const claseNombre = claseElegida?.nombre || personajeActual.clase1 || "Clase";
+  const clasesTexto = clasesActivas
+    .filter(slot => slot.clase && slot.nivel > 0)
+    .map(slot => `${slot.clase.nombre} ${slot.nivel}`)
+    .join(" / ") || "Clase 0";
+
   document.getElementById("nombre-personaje").innerText = personajeActual.nombre || "Sin nombre";
-  document.getElementById("info-personaje").innerText = `${razaNombre}, ${claseNombre} ${personajeActual.nivel}`;
-  document.getElementById("BC").innerText = `+${Math.ceil(1 + (personajeActual.nivel / 4))}`;
+  document.getElementById("info-personaje").innerText = `${razaNombre}, ${clasesTexto} · Nivel ${personajeActual.nivel}`;
+  document.getElementById("BC").innerText = `+${calcularBonificadorCompetencia()}`;
+  if (selectorNivelPersonaje) selectorNivelPersonaje.value = String(personajeActual.nivel);
 }
+
+function refrescarFichaTrasBuild() {
+  recalcularClasesDesdeProgresion();
+  actualizarResumenPersonaje();
+  actualizarPuntosGolpe();
+  renderVida();
+}
+
+function conectarControlesNivelesBuild() {
+  document.querySelectorAll(".build-clase-nivel").forEach(selector => {
+    selector.addEventListener("change", event => {
+      const nivel = Number(event.target.dataset.nivel);
+      const claseId = event.target.value;
+      asegurarDatosBuildPersonaje();
+
+      if (claseId) {
+        personajeActual.progresionNiveles[nivel] = { clase: claseId };
+        const dado = obtenerDadoGolpeDeClase(claseId);
+        const valorActual = Number(personajeActual.pgPorNivel[nivel]) || 1;
+        personajeActual.pgPorNivel[nivel] = Math.max(1, Math.min(valorActual, dado || 1));
+      } else {
+        delete personajeActual.progresionNiveles[nivel];
+        delete personajeActual.pgPorNivel[nivel];
+      }
+
+      refrescarFichaTrasBuild();
+      renderBuildPersonaje();
+    });
+  });
+
+  document.querySelectorAll(".build-pg-nivel").forEach(input => {
+    input.addEventListener("input", event => {
+      const nivel = Number(event.target.dataset.nivel);
+      const claseId = obtenerClaseNivelPersonaje(nivel);
+      const dado = obtenerDadoGolpeDeClase(claseId);
+
+      asegurarDatosBuildPersonaje();
+
+      if (event.target.value === "") {
+        delete personajeActual.pgPorNivel[nivel];
+        actualizarPuntosGolpe();
+        renderVida();
+        return;
+      }
+
+      const valor = Number(event.target.value) || 1;
+      personajeActual.pgPorNivel[nivel] = Math.max(1, Math.min(valor, dado || 1));
+      event.target.value = personajeActual.pgPorNivel[nivel];
+      actualizarPuntosGolpe();
+      renderVida();
+    });
+
+    input.addEventListener("blur", event => {
+      if (event.target.value !== "") return;
+
+      const nivel = Number(event.target.dataset.nivel);
+      const claseId = obtenerClaseNivelPersonaje(nivel);
+      const dado = obtenerDadoGolpeDeClase(claseId);
+      if (!dado) return;
+
+      personajeActual.pgPorNivel[nivel] = 1;
+      event.target.value = 1;
+      actualizarPuntosGolpe();
+      renderVida();
+    })
+  });
+}
+
 
 function conectarControlesBuild() {
   document.getElementById("buildNombre")?.addEventListener("input", event => {
@@ -1511,9 +1913,11 @@ function conectarControlesBuild() {
   document.getElementById("buildClase")?.addEventListener("change", event => {
     personajeActual.clase1 = event.target.value;
     claseElegida = libroDeReglasBasicas.clases.find(c => c.id === personajeActual.clase1);
-    actualizarResumenPersonaje();
+    refrescarFichaTrasBuild();
     renderBuildPersonaje();
   });
+
+  conectarControlesNivelesBuild();
 }
 
 function cambiarVistaPersonaje(vista) {
@@ -1531,11 +1935,9 @@ function cambiarVistaPersonaje(vista) {
 }
 
 selectorNivelPersonaje?.addEventListener("change", event => {
-  const nuevoNivel = Number(event.target.value);
-  personajeActual.nivel = nuevoNivel;
-  personajeActual.nivelClase1 = nuevoNivel;
-  personajeConBonos.nivel = nuevoNivel;
-  actualizarResumenPersonaje();
+  ajustarProgresionANivelTotal(Number(event.target.value));
+  refrescarFichaTrasBuild();
+
   renderBuildPersonaje();
 });
 

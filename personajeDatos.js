@@ -23,6 +23,8 @@ window.personajeActual = {
   hpActual: 0,
   hpTemporales: 0,
   Inspiracion: false,
-  eleccionesRasgos: {}
+  eleccionesRasgos: {},
+  progresionNiveles: {},
+  pgPorNivel: {}
 };
 

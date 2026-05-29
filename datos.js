@@ -166,6 +166,80 @@ let libroDeReglasBasicas = {
       ]
     }
   ],
+  opcionesCompartidas: {
+    estilosCombate: [
+      {
+        id: "arqueria",
+        nombre: "Arquería",
+        descripcionResum: "+2 a las tiradas de ataque con armas a distancia.",
+        descripcion: `
+          Obtienes un bonificador +2 a las tiradas de ataque que hagas
+          con armas a distancia.
+        `,
+        efectos: [
+          {
+            tipoDeEfecto: "bono_ataque",
+            valor: 2,
+            condicion: { etiqueta: "distancia" }
+          }
+        ]
+      },
+      {
+        id: "defensa",
+        nombre: "Defensa",
+        descripcionResum: "Mientras lleves puesta una armadura: +1 a la CA",
+        descripcion: `
+          Mientras lleves puesta una armadura, sea cual sea, ganas un +1 la CA.
+        `,
+        efectos: [
+          {
+            tipoDeEfecto: "bonifCA",
+            valor: 1,
+            condicion: { usaArmadura: true }
+          }
+        ]
+      },
+      {
+        id: "duelista",
+        nombre: "Duelista",
+        descripcionResum: "Si llevas solo un arma en una mano: +2 al ataque",
+        descripcion: `
+          Cuando llevas un arma en una mano y ningún arma más, ganas un bono de +2 a las tiradas de daño con ese arma.
+        `,
+        efectos: [
+          {
+            tipoDeEfecto: "bono_ataque",
+            valor: 2,
+            condicion: { etiqueta: "una-mano" }
+          }
+        ]
+      },
+      {
+        id: "a_dos_manos",
+        nombre: "Lucha con Arma a Dos Manos",
+        descripcionResum: "Cuando sacas un 1 o un 2 en una tirada de daño con un arma a dos manos, puedes..",
+        descripcion: `
+          Cuando sacas un 1 o un 2 en una tirada de daño con un arma a dos manos, puedes volver a realizar la tirada de daño y deberás usar la nueva tirada, incluso si la nueva tirada vuelve a ser un 1 o un 2. El arma debe ser un arma a dos manos o tener la propiedad versátil para ganar este beneficio.
+        `
+      },
+      {
+        id: "proteccion",
+        nombre: "Protección",
+        descripcionResum: "Puedes interponerte en un ataque para dar desventaja a la tirada.",
+        descripcion: `
+          Cuando una criatura que puedes ver ataca a un objetivo que no eres tú y está a 5 pies o menos de ti. Puedes usar tu reacción para hacer que el enemigo tenga desventaja en la tirada de ataque. Debes estar usando un escudo.
+        `
+      },
+      {
+        id: "dos_armas",
+        nombre: "Lucha con Dos Armas",
+        descripcionResum: "Puedes añadir tu modificador de características a un segundo ataque.",
+        descripcion:`
+          Cuando luchas con dos armas con la propiedad "ligera", puedes añadir tu modificador de caracterísica al daño del ataque de tu acción adicional.
+        `
+      }
+    ]
+  },
   clases: [
     {
       id: "barbaro",
@@ -276,6 +350,7 @@ let libroDeReglasBasicas = {
               tipo: "estilo_combate",
               tipoPlural: "estilos de combate",
               cantidadSeleccionable: 1,
+              descripcion: "Escoge un estilo de combate disponible para tu clase.",
               fuenteOpciones: {
                 coleccion: "opcionesCompartidas.estilosCombate",
                 incluirIds: [
@@ -371,80 +446,7 @@ let libroDeReglasBasicas = {
   dotes: [
     {    }
   ],
-  opcionesCompartidas: {
-    estilosCombate: [
-      {
-        id: "arqueria",
-        nombre: "Arquería",
-        descripcionResum: "+2 a las tiradas de ataque con armas a distancia.",
-        descripcion: `
-          Obtienes un bonificador +2 a las tiradas de ataque que hagas
-          con armas a distancia.
-        `,
-        efectos: [
-          {
-            tipoDeEfecto: "bono_ataque",
-            valor: 2,
-            condicion: { etiqueta: "distancia" }
-          }
-        ]
-      },
-      {
-        id: "defensa",
-        nombre: "Defensa",
-        descripcionResum: "Mientras lleves puesta una armadura: +1 a la CA",
-        descripcion: `
-          Mientras lleves puesta una armadura, sea cual sea, ganas un +1 la CA.
-        `,
-        efectos: [
-          {
-            tipoDeEfecto: "bonifCA",
-            valor: 1,
-            condicion: { usaArmadura: true }
-          }
-        ]
-      },
-      {
-        id: "duelista",
-        nombre: "Duelista",
-        descripcionResum: "Si llevas solo un arma en una mano: +2 al ataque",
-        descripcion: `
-          Cuando llevas un arma en una mano y ningún arma más, ganas un bono de +2 a las tiradas de daño con ese arma.
-        `,
-        efectos: [
-          {
-            tipoDeEfecto: "bono_ataque",
-            valor: 2,
-            condicion: { etiqueta: "una-mano" }
-          }
-        ]
-      },
-      {
-        id: "a_dos_manos",
-        nombre: "Lucha con Arma a Dos Manos",
-        descripcionResum: "Cuando sacas un 1 o un 2 en una tirada de daño con un arma a dos manos, puedes..",
-        descripcion: `
-          Cuando sacas un 1 o un 2 en una tirada de daño con un arma a dos manos, puedes volver a realizar la tirada de daño y deberás usar la nueva tirada, incluso si la nueva tirada vuelve a ser un 1 o un 2. El arma debe ser un arma a dos manos o tener la propiedad versátil para ganar este beneficio.
-        `
-      },
-      {
-        id: "proteccion",
-        nombre: "Protección",
-        descripcionResum: "Puedes interponerte en un ataque para dar desventaja a la tirada.",
-        descripcion: `
-          Cuando una criatura que puedes ver ataca a un objetivo que no eres tú y está a 5 pies o menos de ti. Puedes usar tu reacción para hacer que el enemigo tenga desventaja en la tirada de ataque. Debes estar usando un escudo.
-        `
-      },
-      {
-        id: "dos_armas",
-        nombre: "Lucha con Dos Armas",
-        descripcionResum: "Puedes añadir tu modificador de características a un segundo ataque.",
-        descripcion:`
-          Cuando luchas con dos armas con la propiedad "ligera", puedes añadir tu modificador de caracterísica al daño del ataque de tu acción adicional.
-        `
-      }
-    ]
-  }
+  
 };
 
 console.log("Mi libro de reglas:", libroDeReglasBasicas);
