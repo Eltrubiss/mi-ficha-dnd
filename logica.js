@@ -153,6 +153,7 @@ function cargarOCrearPersonajeActivo() {
 
 window.personajeActual = cargarOCrearPersonajeActivo();
 
+const CLAVE_INDICE_PERSONAJES = "miFichaDnd.personajes";
 
 function clonarDatosPersonaje(datos) {
   return JSON.parse(JSON.stringify(datos || {}));
@@ -193,7 +194,7 @@ function normalizarPersonajeGuardado(datos) {
   return datosNormalizados;
 }
 
-const personajeActual = normalizarPersonajeGuardado(window.personajeActual);
+Object.assign(personajeActual, normalizarPersonajeGuardado(window.personajeActual));
 window.personajeActual = personajeActual;
 
 function listarPersonajesGuardados() {
@@ -233,12 +234,16 @@ function actualizarIndicePersonajes(personaje) {
 }
 
 function guardarPersonajeActual() {
+  if (temporizadorAutoguardadoPersonaje) {
+    clearTimeout(temporizadorAutoguardadoPersonaje);
+    temporizadorAutoguardadoPersonaje = null;
+  }
   const ahora = new Date().toISOString();
   const personajeGuardado = normalizarPersonajeGuardado({
     ...clonarDatosPersonaje(personajeActual),
     id: personajeActual.id || crearIdPersonaje(),
     createdAt: personajeActual.createdAt || ahora,
-    updatedAt: ahora
+    updatedAt: personajeActual.updatedAt || ahora
   });
 
   Object.keys(personajeActual).forEach(clave => delete personajeActual[clave]);
@@ -248,13 +253,39 @@ function guardarPersonajeActual() {
     `${PREFIJO_CLAVE_PERSONAJE}${personajeActual.id}`,
     JSON.stringify(personajeActual)
   );
+  localStorage.setItem(CLAVE_PERSONAJE_ACTIVO, personajeActual.id);
   actualizarIndicePersonajes(personajeActual);
   if (typeof renderSelectorPersonajes === "function") {
     renderSelectorPersonajes();
   }
+  hayAutoguardadoPersonajePendiente = false;
 
   return personajeActual;
 }
+
+const DEMORA_AUTOGUARDADO_PERSONAJE = 500;
+let temporizadorAutoguardadoPersonaje = null;
+let hayAutoguardadoPersonajePendiente = false;
+
+function programarAutoguardadoPersonaje() {
+  hayAutoguardadoPersonajePendiente = true;
+
+  if (temporizadorAutoguardadoPersonaje) {
+    clearTimeout(temporizadorAutoguardadoPersonaje);
+  }
+
+  temporizadorAutoguardadoPersonaje = setTimeout(() => {
+    temporizadorAutoguardadoPersonaje = null;
+    guardarPersonajeActual();
+  }, DEMORA_AUTOGUARDADO_PERSONAJE);
+}
+
+function marcarPersonajeModificado() {
+  personajeActual.updatedAt = new Date().toISOString();
+  programarAutoguardadoPersonaje();
+}
+
+window.addEventListener("beforeunload", guardarPersonajeActual);
 
 function cargarPersonajePorId(id) {
   const datosGuardados = localStorage.getItem(`${PREFIJO_CLAVE_PERSONAJE}${id}`);
@@ -852,7 +883,7 @@ function guardarEstadoVida() {
     inspiracion: personajeActual.inspiracion
   };
   escribirJsonLocalStorage("creadorDndPersonaje", estado);
-  guardarPersonajeActual();
+  marcarPersonajeModificado();
 }
 function aplicarCuracion(valor) {
   const hpMax = detalleEstadisticas.PG.total;
@@ -860,11 +891,13 @@ function aplicarCuracion(valor) {
     hpMax,
     personajeActual.hpActual + valor
   );
-  guardarEstadoVida();
+  if (personajeActual.hpActual !== hpAnterior) guardarEstadoVida();
   renderVida();
 }
 
 function aplicarDano(valor) {
+  const hpAnterior = personajeActual.hpActual;
+  const temporalesAnteriores = personajeActual.hpTemporales;
   let restante = Math.max(0, valor);
 
   if (personajeActual.hpTemporales > 0) {
@@ -874,7 +907,19 @@ function aplicarDano(valor) {
   }
 
   personajeActual.hpActual = Math.max(0, personajeActual.hpActual - restante);
-  guardarEstadoVida();
+  if (
+    personajeActual.hpActual !== hpAnterior
+    || personajeActual.hpTemporales !== temporalesAnteriores
+  ) {
+    guardarEstadoVida();
+  }
+  renderVida();
+}
+
+function aplicarTemporales(valor) {
+  const temporalesAnteriores = personajeActual.hpTemporales;
+  personajeActual.hpTemporales = Math.max(0, valor);
+  if (personajeActual.hpTemporales !== temporalesAnteriores) guardarEstadoVida();
   renderVida();
 }
 
@@ -911,7 +956,6 @@ document.getElementById("chkInspiracion")
   .addEventListener("change", alternarInspiracion);
 
 renderVida();
-guardarPersonajeActual();
 ///////////////////// ARMADURAS /////////////////////
 const { caTotal, textoArmadura, detalle } = calcularCA(
   personajeConBonos,
@@ -1605,10 +1649,16 @@ function toggleOpcionSeleccionBuild(indice, opcionId) {
     nuevas = [...actuales, opcionId];
   }
 
+  const cambioReal = nuevas.length !== actuales.length
+    || nuevas.some((id, posicion) => id !== actuales[posicion]);
+  if (!cambioReal) return;
+
   personajeActual.eleccionesRasgos[clave] = nuevas;
+  marcarPersonajeModificado();
   renderBuildPersonaje();
   renderPopupSeleccionBuild(indice);
 }
+
 function renderHechizos() {
   // Placeholder — podés expandir esto con tu lista de hechizos
   panelVentanas.innerHTML = `
@@ -2200,7 +2250,6 @@ function actualizarResumenPersonaje() {
   document.getElementById("info-personaje").innerText = `${razaNombre}, ${clasesTexto} · Nivel ${personajeActual.nivel}`;
   document.getElementById("BC").innerText = `+${calcularBonificadorCompetencia()}`;
   if (selectorNivelPersonaje) selectorNivelPersonaje.value = String(personajeActual.nivel);
-  guardarPersonajeActual();
 }
 
 function refrescarFichaTrasBuild() {
@@ -2216,6 +2265,8 @@ function conectarControlesNivelesBuild() {
       const nivel = Number(event.target.dataset.nivel);
       const claseId = event.target.value;
       asegurarDatosBuildPersonaje();
+      const progresionAnterior = personajeActual.progresionNiveles[nivel]?.clase || "";
+      const pgAnterior = personajeActual.pgPorNivel[nivel];
 
       if (claseId) {
         personajeActual.progresionNiveles[nivel] = { clase: claseId };
@@ -2228,7 +2279,12 @@ function conectarControlesNivelesBuild() {
       }
 
       refrescarFichaTrasBuild();
-      guardarPersonajeActual();
+      if (
+        progresionAnterior !== (personajeActual.progresionNiveles[nivel]?.clase || "")
+        || pgAnterior !== personajeActual.pgPorNivel[nivel]
+      ) {
+        marcarPersonajeModificado();
+      }
       renderBuildPersonaje();
     });
   });
@@ -2240,12 +2296,13 @@ function conectarControlesNivelesBuild() {
       const dado = obtenerDadoGolpeDeClase(claseId);
 
       asegurarDatosBuildPersonaje();
+      const valorAnterior = personajeActual.pgPorNivel[nivel];
 
       if (event.target.value === "") {
         delete personajeActual.pgPorNivel[nivel];
         actualizarPuntosGolpe();
         renderVida();
-        guardarPersonajeActual();
+        if (valorAnterior !== undefined) marcarPersonajeModificado();
         return;
       }
 
@@ -2254,7 +2311,7 @@ function conectarControlesNivelesBuild() {
       event.target.value = personajeActual.pgPorNivel[nivel];
       actualizarPuntosGolpe();
       renderVida();
-      guardarPersonajeActual();
+      if (personajeActual.pgPorNivel[nivel] !== valorAnterior) marcarPersonajeModificado();
     });
 
     input.addEventListener("blur", event => {
@@ -2264,12 +2321,13 @@ function conectarControlesNivelesBuild() {
       const claseId = obtenerClaseNivelPersonaje(nivel);
       const dado = obtenerDadoGolpeDeClase(claseId);
       if (!dado) return;
+      const valorAnterior = personajeActual.pgPorNivel[nivel];
 
       personajeActual.pgPorNivel[nivel] = 1;
       event.target.value = 1;
       actualizarPuntosGolpe();
       renderVida();
-      guardarPersonajeActual();
+      if (valorAnterior !== 1) marcarPersonajeModificado();
     })
   });
 }
@@ -2278,28 +2336,37 @@ function conectarControlesNivelesBuild() {
 
 function conectarControlesBuild() {
   document.getElementById("buildNombre")?.addEventListener("input", event => {
-    personajeActual.nombre = event.target.value;
+    if (personajeActual.nombre !== event.target.value) {
+      personajeActual.nombre = event.target.value;
+      marcarPersonajeModificado();
+    }
     actualizarResumenPersonaje();
   });
 
   document.getElementById("buildRaza")?.addEventListener("change", event => {
+    if (personajeActual.raza === event.target.value) return
     personajeActual.raza = event.target.value;
     razaElegida = libroDeReglasBasicas.razas.find(r => r.id === personajeActual.raza);
     personajeActual.subraza = "";
     subrazaElegida = null;
+    marcarPersonajeModificado();
     actualizarResumenPersonaje();
     renderBuildPersonaje();
   });
 
   document.getElementById("buildSubraza")?.addEventListener("change", event => {
+    if (personajeActual.subraza === event.target.value) return;
     personajeActual.subraza = event.target.value;
     subrazaElegida = razaElegida?.subrazas?.find(s => s.id === personajeActual.subraza) || null;
+    marcarPersonajeModificado();
     renderBuildPersonaje();
   });
 
   document.getElementById("buildClase")?.addEventListener("change", event => {
+    if (personajeActual.clase1 === event.target.value) return;
     personajeActual.clase1 = event.target.value;
     claseElegida = libroDeReglasBasicas.clases.find(c => c.id === personajeActual.clase1);
+    marcarPersonajeModificado();
     refrescarFichaTrasBuild();
     renderBuildPersonaje();
   });
@@ -2336,6 +2403,7 @@ btnCambiarPersonaje?.addEventListener("click", mostrarSelectorPersonajes);
 selectorNivelPersonaje?.addEventListener("change", event => {
   ajustarProgresionANivelTotal(Number(event.target.value));
   refrescarFichaTrasBuild();
+  marcarPersonajeModificado();
 
   renderBuildPersonaje();
 });
