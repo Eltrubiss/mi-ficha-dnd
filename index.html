@@ -318,18 +318,36 @@
             align-items: start;
             gap: 18px;
         }
+        .selector-inicial-personaje {
+            background-color: #f9f2e8;
+            border-radius: 18px;
+            box-shadow: 0 8px 24px rgba(90, 64, 53, 0.16);
+            margin: 40px auto;
+            max-width: 760px;
+            padding: 30px;
+            text-align: center;
+        }
+        .selector-inicial-personaje p {
+            color: #6b5a53;
+            line-height: 1.5;
+            margin: 0 auto 18px;
+            max-width: 560px;
+        }
+        .controles-selector-personaje,
         .controles-personaje {
             display: flex;
             justify-content: center;
             align-items: center;
             gap: 10px;
-            min-width: 180px;
+            flex-wrap: wrap;
         }
+        .controles-selector-personaje label,
         .controles-personaje label {
             color: #5a4035;
             font-weight: 700;
             font-size: 14px;
         }
+        .controles-selector-personaje select,
         .controles-personaje select {
             border: 2px solid #c7a89a;
             border-radius: 10px;
@@ -338,6 +356,24 @@
             padding: 8px 12px;
             font-weight: 700;
             cursor: pointer;
+        }
+        .controles-selector-personaje #selectorPersonaje {
+            min-width: min(100%, 420px);
+        }
+        .controles-selector-personaje button,
+        .controles-personaje button {
+            border: none;
+            border-radius: 10px;
+            background: #5a4035;
+            color: #fff8ed;
+            padding: 10px 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.18s ease, color 0.18s ease;
+        }
+        .controles-selector-personaje button:hover,
+        .controles-personaje button:hover {
+            background-color: #df702c;
         }
         .acciones-personaje {
             display: flex;
@@ -682,9 +718,15 @@
             .cabecera-personaje {
                 grid-template-columns: 1fr;
             }
+            .controles-selector-personaje,
             .controles-personaje,
             .acciones-personaje {
                 justify-content: flex-start;
+            }
+            .selector-inicial-personaje {
+                margin: 20px auto;
+                padding: 22px;
+                text-align: left;
             }
         }
         /* //////////////// Ventanas ////////////////// */
@@ -1041,20 +1083,33 @@
     </style>
 </head>
 <body>
-    <div class="panel-Personaje cabecera-personaje">
+    <section class="selector-inicial-personaje" id="vistaSelectorPersonaje">
+        <h1 class="titulo-panel">Elige tu personaje</h1>
+        <p>Selecciona una ficha guardada o crea un personaje nuevo. La ficha completa se muestra después de elegir con qué personaje quieres jugar.</p>
+        <div class="controles-selector-personaje">
+            <label for="selectorPersonaje">Personaje</label>
+            <select id="selectorPersonaje" aria-label="Seleccionar personaje guardado"></select>
+            <button id="btnAbrirPersonaje" type="button">Abrir personaje</button>
+            <button id="btnNuevoPersonaje" type="button">Nuevo personaje</button>
+        </div>
+    </section>
+
+    <div class="panel-Personaje cabecera-personaje oculto" id="cabeceraFicha">
         <div class="datos-personaje">
             <h2 class="titulo-nombre" id="nombre-personaje"> [Nombre]</h2>
             <p class="Info-personaje" id="info-personaje">[Raza], [Clase] [Nivel]</p>
         </div>
         <div class="controles-personaje">
+            <label for="selectorNivelPersonaje">Nivel</label>
             <select id="selectorNivelPersonaje" aria-label="Seleccionar nivel del personaje"></select>
+            <button id="btnCambiarPersonaje" type="button">Cambiar personaje</button>
         </div>
         <div class="acciones-personaje">
             <button id="btnVistaBuild" type="button">Build</button>
             <button id="btnVistaPersonaje" type="button" class="vista-activa">Personaje</button>
         </div>
     </div>
-    <div class="layout-principal" id="vistaPersonaje">
+    <div class="layout-principal oculto" id="vistaPersonaje">
         <div class="columna-izquierda">
             <div class="panel-estadisticas">
                 <h2 class="titulo-panel">CARACTERISTICAS</h2>

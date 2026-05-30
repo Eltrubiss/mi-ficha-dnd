@@ -1,5 +1,9 @@
 const CLAVE_PERSONAJE_ACTIVO = "miFichaDnd.personajeActivoId";
+const CLAVE_INDICE_PERSONAJES = "miFichaDnd.personajes";
+const CLAVE_ABRIR_FICHA_TRAS_RECARGA = "miFichaDnd.abrirFichaTrasRecarga";
 const PREFIJO_CLAVE_PERSONAJE = "miFichaDnd.personaje.";
+let selectorPersonaje = null;
+let btnNuevoPersonaje = null;
 
 const personajePorDefecto = {
   nombre: "Sin nombre",
@@ -147,8 +151,7 @@ function cargarOCrearPersonajeActivo() {
   return personajeNuevo;
 }
 
-const personajeActual = cargarOCrearPersonajeActivo();
-window.personajeActual = personajeActual;
+window.personajeActual = cargarOCrearPersonajeActivo();
 
 const CLAVE_INDICE_PERSONAJES = "miFichaDnd.personajes";
 
@@ -252,6 +255,9 @@ function guardarPersonajeActual() {
   );
   localStorage.setItem(CLAVE_PERSONAJE_ACTIVO, personajeActual.id);
   actualizarIndicePersonajes(personajeActual);
+  if (typeof renderSelectorPersonajes === "function") {
+    renderSelectorPersonajes();
+  }
   hayAutoguardadoPersonajePendiente = false;
 
   return personajeActual;
@@ -1733,10 +1739,16 @@ document.getElementById("competenciasBtn")?.click();
 //  VISTA BUILD Y SELECTOR DE NIVEL
 // ══════════════════════════════════════════════
 
+const vistaSelectorPersonaje = document.getElementById("vistaSelectorPersonaje");
+const cabeceraFicha = document.getElementById("cabeceraFicha");
 const vistaPersonaje = document.getElementById("vistaPersonaje");
 const vistaBuild = document.getElementById("vistaBuild");
 const btnVistaBuild = document.getElementById("btnVistaBuild");
 const btnVistaPersonaje = document.getElementById("btnVistaPersonaje");
+selectorPersonaje = document.getElementById("selectorPersonaje");
+const btnAbrirPersonaje = document.getElementById("btnAbrirPersonaje");
+btnNuevoPersonaje = document.getElementById("btnNuevoPersonaje");
+const btnCambiarPersonaje = document.getElementById("btnCambiarPersonaje");
 const selectorNivelPersonaje = document.getElementById("selectorNivelPersonaje");
 const buildAvisos = document.getElementById("buildAvisos");
 const buildNiveles = document.getElementById("buildNiveles");
@@ -1748,6 +1760,134 @@ function textoSeguro(valor) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+
+function obtenerPersonajeActivoId() {
+  try {
+    return localStorage.getItem(CLAVE_PERSONAJE_ACTIVO) || personajeActual.id || "";
+  } catch (error) {
+    console.warn("No se pudo leer el personaje activo desde localStorage", error);
+    return personajeActual.id || "";
+  }
+}
+
+function guardarPersonajeActivoId(id) {
+  try {
+    localStorage.setItem(CLAVE_PERSONAJE_ACTIVO, id);
+  } catch (error) {
+    console.warn("No se pudo guardar el personaje activo en localStorage", error);
+  }
+}
+
+function formatearFechaActualizacion(fechaIso) {
+  if (!fechaIso) return "sin fecha";
+
+  const fecha = new Date(fechaIso);
+  if (Number.isNaN(fecha.getTime())) {
+    return String(fechaIso).split("T")[0];
+  }
+
+  return fecha.toISOString().slice(0, 10);
+}
+
+function obtenerNombreClase(claseId) {
+  return libroDeReglasBasicas.clases.find(clase => clase.id === claseId)?.nombre || claseId || "Clase";
+}
+
+function crearTextoOpcionPersonaje(personaje) {
+  const nombre = personaje.nombre || personajePorDefecto.nombre;
+  const clase = obtenerNombreClase(personaje.clase1 || personajePorDefecto.clase1);
+  const nivel = Number(personaje.nivel) || personajePorDefecto.nivel;
+  const fecha = formatearFechaActualizacion(personaje.updatedAt);
+
+  return `${nombre} · ${clase} nivel ${nivel} · actualizado ${fecha}`;
+}
+
+function renderSelectorPersonajes() {
+  if (!selectorPersonaje) return;
+
+  const activoId = obtenerPersonajeActivoId();
+  const personajes = listarPersonajesGuardados();
+  if (personajeActual.id && !personajes.some(personaje => personaje.id === personajeActual.id)) {
+    personajes.unshift(obtenerMetadatosPersonaje(personajeActual));
+  }
+
+  selectorPersonaje.innerHTML = personajes
+    .map(personaje => `
+      <option value="${textoSeguro(personaje.id)}">
+        ${textoSeguro(crearTextoOpcionPersonaje(personaje))}
+      </option>
+    `)
+    .join("");
+
+  selectorPersonaje.value = activoId || personajeActual.id || "";
+}
+
+function mostrarSelectorPersonajes() {
+  vistaSelectorPersonaje?.classList.remove("oculto");
+  cabeceraFicha?.classList.add("oculto");
+  vistaPersonaje?.classList.add("oculto");
+  vistaBuild?.classList.add("oculto");
+  renderSelectorPersonajes();
+}
+
+function mostrarFichaActiva() {
+  vistaSelectorPersonaje?.classList.add("oculto");
+  cabeceraFicha?.classList.remove("oculto");
+  cambiarVistaPersonaje("personaje");
+}
+
+function marcarAbrirFichaTrasRecarga() {
+  try {
+    sessionStorage.setItem(CLAVE_ABRIR_FICHA_TRAS_RECARGA, "1");
+  } catch (error) {
+    console.warn("No se pudo recordar que debe abrirse la ficha tras recargar", error);
+  }
+}
+
+function debeAbrirFichaTrasRecarga() {
+  try {
+    const debeAbrir = sessionStorage.getItem(CLAVE_ABRIR_FICHA_TRAS_RECARGA) === "1";
+    sessionStorage.removeItem(CLAVE_ABRIR_FICHA_TRAS_RECARGA);
+    return debeAbrir;
+  } catch (error) {
+    console.warn("No se pudo leer el estado de apertura de ficha", error);
+    return false;
+  }
+}
+
+function refrescarFichaCompleta() {
+  marcarAbrirFichaTrasRecarga();
+  window.location.reload();
+}
+
+function activarPersonajeGuardado(id) {
+  if (!id) return;
+
+  const personajeCargado = cargarPersonajePorId(id);
+  if (!personajeCargado) {
+    renderSelectorPersonajes();
+    return;
+  }
+
+  guardarPersonajeActivoId(id);
+
+  if (id === personajeActual.id) {
+    mostrarFichaActiva();
+    return;
+  }
+
+  Object.keys(personajeActual).forEach(clave => delete personajeActual[clave]);
+  Object.assign(personajeActual, personajeCargado);
+  refrescarFichaCompleta();
+}
+
+function crearYActivarNuevoPersonaje() {
+  const nuevoPersonaje = crearNuevoPersonaje();
+  guardarPersonajeActivoId(nuevoPersonaje.id);
+  renderSelectorPersonajes();
+  refrescarFichaCompleta();
 }
 
 function crearOpcionesNivel() {
@@ -2248,6 +2388,18 @@ function cambiarVistaPersonaje(vista) {
   }
 }
 
+selectorPersonaje?.addEventListener("change", event => {
+  activarPersonajeGuardado(event.target.value);
+});
+
+btnAbrirPersonaje?.addEventListener("click", () => {
+  activarPersonajeGuardado(selectorPersonaje?.value || personajeActual.id);
+});
+
+btnNuevoPersonaje?.addEventListener("click", crearYActivarNuevoPersonaje);
+
+btnCambiarPersonaje?.addEventListener("click", mostrarSelectorPersonajes);
+
 selectorNivelPersonaje?.addEventListener("change", event => {
   ajustarProgresionANivelTotal(Number(event.target.value));
   refrescarFichaTrasBuild();
@@ -2261,4 +2413,10 @@ btnVistaPersonaje?.addEventListener("click", () => cambiarVistaPersonaje("person
 
 crearOpcionesNivel();
 actualizarResumenPersonaje();
+renderSelectorPersonajes();
 renderBuildPersonaje();
+if (debeAbrirFichaTrasRecarga()) {
+  mostrarFichaActiva();
+} else {
+  mostrarSelectorPersonajes();
+}
