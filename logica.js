@@ -2,13 +2,15 @@ const CLAVE_PERSONAJE_ACTIVO = "miFichaDnd.personajeActivoId";
 const CLAVE_INDICE_PERSONAJES = "miFichaDnd.personajes";
 const CLAVE_ABRIR_FICHA_TRAS_RECARGA = "miFichaDnd.abrirFichaTrasRecarga";
 const PREFIJO_CLAVE_PERSONAJE = "miFichaDnd.personaje.";
-let selectorPersonaje = null;
+let buscadorPersonajes = null;
+let listadoPersonajes = null;
 let btnNuevoPersonaje = null;
 
 const personajePorDefecto = {
   nombre: "Sin nombre",
   raza: "humano",
   subraza: "",
+  clase1: "guerrero",
   nivelClase1: 1,
   subclase1: "",
   clase2: "",
@@ -159,8 +161,6 @@ function cargarOCrearPersonajeActivo() {
 }
 
 window.personajeActual = cargarOCrearPersonajeActivo();
-
-const CLAVE_INDICE_PERSONAJES = "miFichaDnd.personajes";
 
 function clonarDatosPersonaje(datos) {
   return JSON.parse(JSON.stringify(datos || {}));
@@ -1828,25 +1828,29 @@ function describirClasePersonaje(personaje, numeroSlot) {
 }
 
 function crearSubtituloTarjetaPersonaje(personaje) {
+  const claseId = personaje.clase1 || personajePorDefecto.clase1;
+  const subclaseId = personaje.subclase1 || personajePorDefecto.subclase1;
+  const clase = obtenerClasePorId(claseId);
+  const subclase = obtenerSubclasePorId(claseId, subclaseId);
+  const claseTexto = clase?.nombre || obtenerNombreClase(claseId);
+  const subclaseTexto = subclase?.nombre || "Sin subclase";
   const raza = obtenerNombreRaza(personaje.raza || personajePorDefecto.raza);
-  const clases = [1, 2, 3]
-    .map(numeroSlot => describirClasePersonaje(personaje, numeroSlot))
-    .filter(Boolean)
-    .join(" / ") || `${obtenerNombreClase(personaje.clase1 || personajePorDefecto.clase1)} ${Number(personaje.nivel) || personajePorDefecto.nivel}`;
+  const nivel = Number(personaje.nivel) || personajePorDefecto.nivel;
 
-  return `${raza}, ${clases} · Nivel ${Number(personaje.nivel) || personajePorDefecto.nivel}`;
+  return `${claseTexto} / ${subclaseTexto} / ${raza} / Nivel ${nivel}`;
 }
 
 function obtenerPersonajesSelector() {
   const personajes = listarPersonajesGuardados()
-    .map(personaje => cargarPersonajePorId(personaje.id) || normalizarPersonajeGuardado(personaje));
+    .map(personaje => cargarPersonajePorId(personaje.id) || normalizarPersonajeGuardado(personaje))
+    .filter(Boolean);
 
   if (personajeActual.id && !personajes.some(personaje => personaje.id === personajeActual.id)) {
     personajes.unshift(normalizarPersonajeGuardado(personajeActual));
   }
-}
 
   return personajes;
+}
 
 function renderSelectorPersonajes() {
   if (!listadoPersonajes) return;
