@@ -98,12 +98,19 @@ function obtenerIdsPersonajesGuardados() {
 }
 
 function normalizarPersonaje(personaje) {
+  const datos = clonarPersonaje(personaje || {});
+  if (Object.prototype.hasOwnProperty.call(datos, "Inspiracion")
+      && !Object.prototype.hasOwnProperty.call(datos, "inspiracion")) {
+    datos.inspiracion = datos.Inspiracion;
+  }
+  delete datos.Inspiracion;
+
   return {
     ...clonarPersonaje(personajePorDefecto),
-    ...clonarPersonaje(personaje || {}),
-    eleccionesRasgos: { ...(personaje?.eleccionesRasgos || {}) },
-    progresionNiveles: { ...(personaje?.progresionNiveles || {}) },
-    pgPorNivel: { ...(personaje?.pgPorNivel || {}) }
+    ...datos,
+    eleccionesRasgos: { ...(datos.eleccionesRasgos || {}) },
+    progresionNiveles: { ...(datos.progresionNiveles || {}) },
+    pgPorNivel: { ...(datos.pgPorNivel || {}) }
   };
 }
 
@@ -168,20 +175,27 @@ function crearIdPersonaje() {
 }
 
 function normalizarPersonajeGuardado(datos) {
+  const datosCompatibles = clonarDatosPersonaje(datos);
+  if (Object.prototype.hasOwnProperty.call(datosCompatibles, "Inspiracion")
+      && !Object.prototype.hasOwnProperty.call(datosCompatibles, "inspiracion")) {
+    datosCompatibles.inspiracion = datosCompatibles.Inspiracion;
+  }
+  delete datosCompatibles.Inspiracion;
+
   const datosNormalizados = {
     ...clonarDatosPersonaje(personajePorDefecto),
-    ...clonarDatosPersonaje(datos),
+    ...datosCompatibles,
     eleccionesRasgos: {
       ...clonarDatosPersonaje(personajePorDefecto.eleccionesRasgos),
-      ...clonarDatosPersonaje(datos?.eleccionesRasgos)
+      ...clonarDatosPersonaje(datosCompatibles.eleccionesRasgos)
     },
     progresionNiveles: {
       ...clonarDatosPersonaje(personajePorDefecto.progresionNiveles),
-      ...clonarDatosPersonaje(datos?.progresionNiveles)
+      ...clonarDatosPersonaje(datosCompatibles.progresionNiveles)
     },
     pgPorNivel: {
       ...clonarDatosPersonaje(personajePorDefecto.pgPorNivel),
-      ...clonarDatosPersonaje(datos?.pgPorNivel)
+      ...clonarDatosPersonaje(datosCompatibles.pgPorNivel)
     }
   };
 
