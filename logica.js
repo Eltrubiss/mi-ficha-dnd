@@ -2,8 +2,7 @@ const CLAVE_PERSONAJE_ACTIVO = "miFichaDnd.personajeActivoId";
 const CLAVE_INDICE_PERSONAJES = "miFichaDnd.personajes";
 const CLAVE_ABRIR_FICHA_TRAS_RECARGA = "miFichaDnd.abrirFichaTrasRecarga";
 const PREFIJO_CLAVE_PERSONAJE = "miFichaDnd.personaje.";
-let buscadorPersonajes = null;
-let listadoPersonajes = null;
+let selectorPersonaje = null;
 let btnNuevoPersonaje = null;
 
 const personajePorDefecto = {
@@ -99,12 +98,19 @@ function obtenerIdsPersonajesGuardados() {
 }
 
 function normalizarPersonaje(personaje) {
+  const datos = clonarPersonaje(personaje || {});
+  if (Object.prototype.hasOwnProperty.call(datos, "Inspiracion")
+      && !Object.prototype.hasOwnProperty.call(datos, "inspiracion")) {
+    datos.inspiracion = datos.Inspiracion;
+  }
+  delete datos.Inspiracion;
+
   return {
     ...clonarPersonaje(personajePorDefecto),
-    ...clonarPersonaje(personaje || {}),
-    eleccionesRasgos: { ...(personaje?.eleccionesRasgos || {}) },
-    progresionNiveles: { ...(personaje?.progresionNiveles || {}) },
-    pgPorNivel: { ...(personaje?.pgPorNivel || {}) }
+    ...datos,
+    eleccionesRasgos: { ...(datos.eleccionesRasgos || {}) },
+    progresionNiveles: { ...(datos.progresionNiveles || {}) },
+    pgPorNivel: { ...(datos.pgPorNivel || {}) }
   };
 }
 
@@ -154,6 +160,7 @@ function cargarOCrearPersonajeActivo() {
 
 window.personajeActual = cargarOCrearPersonajeActivo();
 
+const CLAVE_INDICE_PERSONAJES = "miFichaDnd.personajes";
 
 function clonarDatosPersonaje(datos) {
   return JSON.parse(JSON.stringify(datos || {}));
@@ -168,20 +175,27 @@ function crearIdPersonaje() {
 }
 
 function normalizarPersonajeGuardado(datos) {
+  const datosCompatibles = clonarDatosPersonaje(datos);
+  if (Object.prototype.hasOwnProperty.call(datosCompatibles, "Inspiracion")
+      && !Object.prototype.hasOwnProperty.call(datosCompatibles, "inspiracion")) {
+    datosCompatibles.inspiracion = datosCompatibles.Inspiracion;
+  }
+  delete datosCompatibles.Inspiracion;
+
   const datosNormalizados = {
     ...clonarDatosPersonaje(personajePorDefecto),
-    ...clonarDatosPersonaje(datos),
+    ...datosCompatibles,
     eleccionesRasgos: {
       ...clonarDatosPersonaje(personajePorDefecto.eleccionesRasgos),
-      ...clonarDatosPersonaje(datos?.eleccionesRasgos)
+      ...clonarDatosPersonaje(datosCompatibles.eleccionesRasgos)
     },
     progresionNiveles: {
       ...clonarDatosPersonaje(personajePorDefecto.progresionNiveles),
-      ...clonarDatosPersonaje(datos?.progresionNiveles)
+      ...clonarDatosPersonaje(datosCompatibles.progresionNiveles)
     },
     pgPorNivel: {
       ...clonarDatosPersonaje(personajePorDefecto.pgPorNivel),
-      ...clonarDatosPersonaje(datos?.pgPorNivel)
+      ...clonarDatosPersonaje(datosCompatibles.pgPorNivel)
     }
   };
 
@@ -194,7 +208,7 @@ function normalizarPersonajeGuardado(datos) {
   return datosNormalizados;
 }
 
-const personajeActual = normalizarPersonajeGuardado(window.personajeActual);
+Object.assign(personajeActual, normalizarPersonajeGuardado(window.personajeActual));
 window.personajeActual = personajeActual;
 
 function listarPersonajesGuardados() {
@@ -234,12 +248,16 @@ function actualizarIndicePersonajes(personaje) {
 }
 
 function guardarPersonajeActual() {
+  if (temporizadorAutoguardadoPersonaje) {
+    clearTimeout(temporizadorAutoguardadoPersonaje);
+    temporizadorAutoguardadoPersonaje = null;
+  }
   const ahora = new Date().toISOString();
   const personajeGuardado = normalizarPersonajeGuardado({
     ...clonarDatosPersonaje(personajeActual),
     id: personajeActual.id || crearIdPersonaje(),
     createdAt: personajeActual.createdAt || ahora,
-    updatedAt: ahora
+    updatedAt: personajeActual.updatedAt || ahora
   });
 
   Object.keys(personajeActual).forEach(clave => delete personajeActual[clave]);
@@ -249,13 +267,39 @@ function guardarPersonajeActual() {
     `${PREFIJO_CLAVE_PERSONAJE}${personajeActual.id}`,
     JSON.stringify(personajeActual)
   );
+  localStorage.setItem(CLAVE_PERSONAJE_ACTIVO, personajeActual.id);
   actualizarIndicePersonajes(personajeActual);
   if (typeof renderSelectorPersonajes === "function") {
     renderSelectorPersonajes();
   }
+  hayAutoguardadoPersonajePendiente = false;
 
   return personajeActual;
 }
+
+const DEMORA_AUTOGUARDADO_PERSONAJE = 500;
+let temporizadorAutoguardadoPersonaje = null;
+let hayAutoguardadoPersonajePendiente = false;
+
+function programarAutoguardadoPersonaje() {
+  hayAutoguardadoPersonajePendiente = true;
+
+  if (temporizadorAutoguardadoPersonaje) {
+    clearTimeout(temporizadorAutoguardadoPersonaje);
+  }
+
+  temporizadorAutoguardadoPersonaje = setTimeout(() => {
+    temporizadorAutoguardadoPersonaje = null;
+    guardarPersonajeActual();
+  }, DEMORA_AUTOGUARDADO_PERSONAJE);
+}
+
+function marcarPersonajeModificado() {
+  personajeActual.updatedAt = new Date().toISOString();
+  programarAutoguardadoPersonaje();
+}
+
+window.addEventListener("beforeunload", guardarPersonajeActual);
 
 function cargarPersonajePorId(id) {
   const datosGuardados = localStorage.getItem(`${PREFIJO_CLAVE_PERSONAJE}${id}`);
@@ -853,7 +897,7 @@ function guardarEstadoVida() {
     inspiracion: personajeActual.inspiracion
   };
   escribirJsonLocalStorage("creadorDndPersonaje", estado);
-  guardarPersonajeActual();
+  marcarPersonajeModificado();
 }
 function aplicarCuracion(valor) {
   const hpMax = detalleEstadisticas.PG.total;
@@ -861,11 +905,13 @@ function aplicarCuracion(valor) {
     hpMax,
     personajeActual.hpActual + valor
   );
-  guardarEstadoVida();
+  if (personajeActual.hpActual !== hpAnterior) guardarEstadoVida();
   renderVida();
 }
 
 function aplicarDano(valor) {
+  const hpAnterior = personajeActual.hpActual;
+  const temporalesAnteriores = personajeActual.hpTemporales;
   let restante = Math.max(0, valor);
 
   if (personajeActual.hpTemporales > 0) {
@@ -875,7 +921,19 @@ function aplicarDano(valor) {
   }
 
   personajeActual.hpActual = Math.max(0, personajeActual.hpActual - restante);
-  guardarEstadoVida();
+  if (
+    personajeActual.hpActual !== hpAnterior
+    || personajeActual.hpTemporales !== temporalesAnteriores
+  ) {
+    guardarEstadoVida();
+  }
+  renderVida();
+}
+
+function aplicarTemporales(valor) {
+  const temporalesAnteriores = personajeActual.hpTemporales;
+  personajeActual.hpTemporales = Math.max(0, valor);
+  if (personajeActual.hpTemporales !== temporalesAnteriores) guardarEstadoVida();
   renderVida();
 }
 
@@ -912,7 +970,6 @@ document.getElementById("chkInspiracion")
   .addEventListener("change", alternarInspiracion);
 
 renderVida();
-guardarPersonajeActual();
 ///////////////////// ARMADURAS /////////////////////
 const { caTotal, textoArmadura, detalle } = calcularCA(
   personajeConBonos,
@@ -1606,10 +1663,16 @@ function toggleOpcionSeleccionBuild(indice, opcionId) {
     nuevas = [...actuales, opcionId];
   }
 
+  const cambioReal = nuevas.length !== actuales.length
+    || nuevas.some((id, posicion) => id !== actuales[posicion]);
+  if (!cambioReal) return;
+
   personajeActual.eleccionesRasgos[clave] = nuevas;
+  marcarPersonajeModificado();
   renderBuildPersonaje();
   renderPopupSeleccionBuild(indice);
 }
+
 function renderHechizos() {
   // Placeholder — podés expandir esto con tu lista de hechizos
   panelVentanas.innerHTML = `
@@ -1696,8 +1759,8 @@ const vistaPersonaje = document.getElementById("vistaPersonaje");
 const vistaBuild = document.getElementById("vistaBuild");
 const btnVistaBuild = document.getElementById("btnVistaBuild");
 const btnVistaPersonaje = document.getElementById("btnVistaPersonaje");
-buscadorPersonajes = document.getElementById("buscadorPersonajes");
-listadoPersonajes = document.getElementById("listadoPersonajes");
+selectorPersonaje = document.getElementById("selectorPersonaje");
+const btnAbrirPersonaje = document.getElementById("btnAbrirPersonaje");
 btnNuevoPersonaje = document.getElementById("btnNuevoPersonaje");
 const btnCambiarPersonaje = document.getElementById("btnCambiarPersonaje");
 const selectorNivelPersonaje = document.getElementById("selectorNivelPersonaje");
@@ -1731,84 +1794,48 @@ function guardarPersonajeActivoId(id) {
   }
 }
 
+function formatearFechaActualizacion(fechaIso) {
+  if (!fechaIso) return "sin fecha";
+
+  const fecha = new Date(fechaIso);
+  if (Number.isNaN(fecha.getTime())) {
+    return String(fechaIso).split("T")[0];
+  }
+
+  return fecha.toISOString().slice(0, 10);
+}
+
 function obtenerNombreClase(claseId) {
   return libroDeReglasBasicas.clases.find(clase => clase.id === claseId)?.nombre || claseId || "Clase";
 }
 
-function normalizarTextoBusqueda(valor) {
-  return String(valor || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-}
+function crearTextoOpcionPersonaje(personaje) {
+  const nombre = personaje.nombre || personajePorDefecto.nombre;
+  const clase = obtenerNombreClase(personaje.clase1 || personajePorDefecto.clase1);
+  const nivel = Number(personaje.nivel) || personajePorDefecto.nivel;
+  const fecha = formatearFechaActualizacion(personaje.updatedAt);
 
-function obtenerNombreRaza(razaId) {
-  return libroDeReglasBasicas.razas.find(raza => raza.id === razaId)?.nombre || razaId || "Raza";
-}
-
-function obtenerSubclasePorId(claseId, subclaseId) {
-  return obtenerClasePorId(claseId)?.subclases?.find(subclase => subclase.id === subclaseId) || null;
-}
-
-function describirClasePersonaje(personaje, numeroSlot) {
-  const claseId = personaje[`clase${numeroSlot}`] || "";
-  const nivel = Number(personaje[`nivelClase${numeroSlot}`]) || 0;
-  if (!claseId || nivel <= 0) return null;
-
-  const clase = obtenerClasePorId(claseId);
-  const subclase = obtenerSubclasePorId(claseId, personaje[`subclase${numeroSlot}`]);
-  const textoSubclase = subclase ? ` (${subclase.nombre})` : "";
-
-  return `${clase?.nombre || claseId} ${nivel}${textoSubclase}`;
-}
-
-function crearSubtituloTarjetaPersonaje(personaje) {
-  const raza = obtenerNombreRaza(personaje.raza || personajePorDefecto.raza);
-  const clases = [1, 2, 3]
-    .map(numeroSlot => describirClasePersonaje(personaje, numeroSlot))
-    .filter(Boolean)
-    .join(" / ") || `${obtenerNombreClase(personaje.clase1 || personajePorDefecto.clase1)} ${Number(personaje.nivel) || personajePorDefecto.nivel}`;
-
-  return `${raza}, ${clases} · Nivel ${Number(personaje.nivel) || personajePorDefecto.nivel}`;
-}
-
-function obtenerPersonajesSelector() {
-  const personajes = listarPersonajesGuardados()
-    .map(personaje => cargarPersonajePorId(personaje.id) || normalizarPersonajeGuardado(personaje));
-
-  if (personajeActual.id && !personajes.some(personaje => personaje.id === personajeActual.id)) {
-    personajes.unshift(normalizarPersonajeGuardado(personajeActual));
-  }
-
-  return personajes;
+  return `${nombre} · ${clase} nivel ${nivel} · actualizado ${fecha}`;
 }
 
 function renderSelectorPersonajes() {
-  if (!listadoPersonajes) return;
+  if (!selectorPersonaje) return;
 
   const activoId = obtenerPersonajeActivoId();
-  const busqueda = normalizarTextoBusqueda(buscadorPersonajes?.value);
-  const personajes = obtenerPersonajesSelector()
-    .filter(personaje => normalizarTextoBusqueda(personaje.nombre || personajePorDefecto.nombre).includes(busqueda));
-
-  if (personajes.length === 0) {
-    listadoPersonajes.innerHTML = `<div class="selector-personaje-vacio">No hay personajes que coincidan con la búsqueda.</div>`;
-    return;
+  const personajes = listarPersonajesGuardados();
+  if (personajeActual.id && !personajes.some(personaje => personaje.id === personajeActual.id)) {
+    personajes.unshift(obtenerMetadatosPersonaje(personajeActual));
   }
 
-  listadoPersonajes.innerHTML = personajes
+  selectorPersonaje.innerHTML = personajes
     .map(personaje => `
-      <button type="button" class="tarjeta-personaje ${personaje.id === activoId ? "activa" : ""}" data-personaje-id="${textoSeguro(personaje.id)}">
-        <h3>${textoSeguro(personaje.nombre || personajePorDefecto.nombre)}</h3>
-        <p>${textoSeguro(crearSubtituloTarjetaPersonaje(personaje))}</p>
-      </button>
+      <option value="${textoSeguro(personaje.id)}">
+        ${textoSeguro(crearTextoOpcionPersonaje(personaje))}
+      </option>
     `)
     .join("");
 
-  listadoPersonajes.querySelectorAll(".tarjeta-personaje").forEach(tarjeta => {
-    tarjeta.addEventListener("click", () => activarPersonajeGuardado(tarjeta.dataset.personajeId));
-  });
+  selectorPersonaje.value = activoId || personajeActual.id || "";
 }
 
 function mostrarSelectorPersonajes() {
@@ -1871,19 +1898,9 @@ function activarPersonajeGuardado(id) {
 }
 
 function crearYActivarNuevoPersonaje() {
-  const ahora = new Date().toISOString();
-  const nuevoPersonaje = normalizarPersonajeGuardado({
-    ...clonarDatosPersonaje(personajePorDefecto),
-    id: crearIdPersonaje(),
-    createdAt: ahora,
-    updatedAt: ahora
-  });
-
-  localStorage.setItem(`${PREFIJO_CLAVE_PERSONAJE}${nuevoPersonaje.id}`, JSON.stringify(nuevoPersonaje));
-  actualizarIndicePersonajes(nuevoPersonaje);
+  const nuevoPersonaje = crearNuevoPersonaje();
   guardarPersonajeActivoId(nuevoPersonaje.id);
-  Object.keys(personajeActual).forEach(clave => delete personajeActual[clave]);
-  Object.assign(personajeActual, nuevoPersonaje);
+  renderSelectorPersonajes();
   refrescarFichaCompleta();
 }
 
@@ -2247,7 +2264,6 @@ function actualizarResumenPersonaje() {
   document.getElementById("info-personaje").innerText = `${razaNombre}, ${clasesTexto} · Nivel ${personajeActual.nivel}`;
   document.getElementById("BC").innerText = `+${calcularBonificadorCompetencia()}`;
   if (selectorNivelPersonaje) selectorNivelPersonaje.value = String(personajeActual.nivel);
-  guardarPersonajeActual();
 }
 
 function refrescarFichaTrasBuild() {
@@ -2263,6 +2279,8 @@ function conectarControlesNivelesBuild() {
       const nivel = Number(event.target.dataset.nivel);
       const claseId = event.target.value;
       asegurarDatosBuildPersonaje();
+      const progresionAnterior = personajeActual.progresionNiveles[nivel]?.clase || "";
+      const pgAnterior = personajeActual.pgPorNivel[nivel];
 
       if (claseId) {
         personajeActual.progresionNiveles[nivel] = { clase: claseId };
@@ -2275,7 +2293,12 @@ function conectarControlesNivelesBuild() {
       }
 
       refrescarFichaTrasBuild();
-      guardarPersonajeActual();
+      if (
+        progresionAnterior !== (personajeActual.progresionNiveles[nivel]?.clase || "")
+        || pgAnterior !== personajeActual.pgPorNivel[nivel]
+      ) {
+        marcarPersonajeModificado();
+      }
       renderBuildPersonaje();
     });
   });
@@ -2287,12 +2310,13 @@ function conectarControlesNivelesBuild() {
       const dado = obtenerDadoGolpeDeClase(claseId);
 
       asegurarDatosBuildPersonaje();
+      const valorAnterior = personajeActual.pgPorNivel[nivel];
 
       if (event.target.value === "") {
         delete personajeActual.pgPorNivel[nivel];
         actualizarPuntosGolpe();
         renderVida();
-        guardarPersonajeActual();
+        if (valorAnterior !== undefined) marcarPersonajeModificado();
         return;
       }
 
@@ -2301,7 +2325,7 @@ function conectarControlesNivelesBuild() {
       event.target.value = personajeActual.pgPorNivel[nivel];
       actualizarPuntosGolpe();
       renderVida();
-      guardarPersonajeActual();
+      if (personajeActual.pgPorNivel[nivel] !== valorAnterior) marcarPersonajeModificado();
     });
 
     input.addEventListener("blur", event => {
@@ -2311,12 +2335,13 @@ function conectarControlesNivelesBuild() {
       const claseId = obtenerClaseNivelPersonaje(nivel);
       const dado = obtenerDadoGolpeDeClase(claseId);
       if (!dado) return;
+      const valorAnterior = personajeActual.pgPorNivel[nivel];
 
       personajeActual.pgPorNivel[nivel] = 1;
       event.target.value = 1;
       actualizarPuntosGolpe();
       renderVida();
-      guardarPersonajeActual();
+      if (valorAnterior !== 1) marcarPersonajeModificado();
     })
   });
 }
@@ -2325,28 +2350,37 @@ function conectarControlesNivelesBuild() {
 
 function conectarControlesBuild() {
   document.getElementById("buildNombre")?.addEventListener("input", event => {
-    personajeActual.nombre = event.target.value;
+    if (personajeActual.nombre !== event.target.value) {
+      personajeActual.nombre = event.target.value;
+      marcarPersonajeModificado();
+    }
     actualizarResumenPersonaje();
   });
 
   document.getElementById("buildRaza")?.addEventListener("change", event => {
+    if (personajeActual.raza === event.target.value) return
     personajeActual.raza = event.target.value;
     razaElegida = libroDeReglasBasicas.razas.find(r => r.id === personajeActual.raza);
     personajeActual.subraza = "";
     subrazaElegida = null;
+    marcarPersonajeModificado();
     actualizarResumenPersonaje();
     renderBuildPersonaje();
   });
 
   document.getElementById("buildSubraza")?.addEventListener("change", event => {
+    if (personajeActual.subraza === event.target.value) return;
     personajeActual.subraza = event.target.value;
     subrazaElegida = razaElegida?.subrazas?.find(s => s.id === personajeActual.subraza) || null;
+    marcarPersonajeModificado();
     renderBuildPersonaje();
   });
 
   document.getElementById("buildClase")?.addEventListener("change", event => {
+    if (personajeActual.clase1 === event.target.value) return;
     personajeActual.clase1 = event.target.value;
     claseElegida = libroDeReglasBasicas.clases.find(c => c.id === personajeActual.clase1);
+    marcarPersonajeModificado();
     refrescarFichaTrasBuild();
     renderBuildPersonaje();
   });
@@ -2368,7 +2402,13 @@ function cambiarVistaPersonaje(vista) {
   }
 }
 
-buscadorPersonajes?.addEventListener("input", renderSelectorPersonajes);
+selectorPersonaje?.addEventListener("change", event => {
+  activarPersonajeGuardado(event.target.value);
+});
+
+btnAbrirPersonaje?.addEventListener("click", () => {
+  activarPersonajeGuardado(selectorPersonaje?.value || personajeActual.id);
+});
 
 btnNuevoPersonaje?.addEventListener("click", crearYActivarNuevoPersonaje);
 
@@ -2377,6 +2417,7 @@ btnCambiarPersonaje?.addEventListener("click", mostrarSelectorPersonajes);
 selectorNivelPersonaje?.addEventListener("change", event => {
   ajustarProgresionANivelTotal(Number(event.target.value));
   refrescarFichaTrasBuild();
+  marcarPersonajeModificado();
 
   renderBuildPersonaje();
 });
