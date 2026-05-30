@@ -311,7 +311,7 @@
             display: none;
         }
 
-        /* //////////////// Navegación ficha/build ////////////////// */
+/* //////////////// Navegación ficha/build ////////////////// */
         .cabecera-personaje {
             display: grid;
             grid-template-columns: minmax(180px, 1fr) auto auto;
@@ -323,17 +323,28 @@
             border-radius: 18px;
             box-shadow: 0 8px 24px rgba(90, 64, 53, 0.16);
             margin: 40px auto;
-            max-width: 760px;
+            max-width: 980px;
             padding: 30px;
-            text-align: center;
+            text-align: left;
         }
         .selector-inicial-personaje p {
             color: #6b5a53;
             line-height: 1.5;
-            margin: 0 auto 18px;
-            max-width: 560px;
+            margin: 0 0 22px;
+            max-width: 620px;
         }
-        .controles-selector-personaje,
+        .selector-personaje-barra {
+            align-items: flex-end;
+            display: grid;
+            gap: 12px;
+            grid-template-columns: minmax(220px, 1fr) auto;
+            margin-bottom: 22px;
+        }
+        .campo-buscador-personaje {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
         .controles-personaje {
             display: flex;
             justify-content: center;
@@ -341,13 +352,13 @@
             gap: 10px;
             flex-wrap: wrap;
         }
-        .controles-selector-personaje label,
+        .campo-buscador-personaje label,
         .controles-personaje label {
             color: #5a4035;
             font-weight: 700;
             font-size: 14px;
         }
-        .controles-selector-personaje select,
+        .campo-buscador-personaje input,
         .controles-personaje select {
             border: 2px solid #c7a89a;
             border-radius: 10px;
@@ -417,24 +428,6 @@
             transition: background-color 0.18s ease, color 0.18s ease;
         }
         .selector-personaje-barra button:hover,
-        .controles-personaje button:hover {
-            background-color: #df702c;
-        }
-        .controles-selector-personaje #selectorPersonaje {
-            min-width: min(100%, 420px);
-        }
-        .controles-selector-personaje button,
-        .controles-personaje button {
-            border: none;
-            border-radius: 10px;
-            background: #5a4035;
-            color: #fff8ed;
-            padding: 10px 14px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background-color 0.18s ease, color 0.18s ease;
-        }
-        .controles-selector-personaje button:hover,
         .controles-personaje button:hover {
             background-color: #df702c;
         }
@@ -781,7 +774,9 @@
             .cabecera-personaje {
                 grid-template-columns: 1fr;
             }
-            .controles-selector-personaje,
+            .selector-personaje-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
             .controles-personaje,
             .acciones-personaje {
                 justify-content: flex-start;
@@ -1147,14 +1142,19 @@
 </head>
 <body>
     <section class="selector-inicial-personaje" id="vistaSelectorPersonaje">
-        <h1 class="titulo-panel">Elige tu personaje</h1>
-        <p>Selecciona una ficha guardada o crea un personaje nuevo. La ficha completa se muestra después de elegir con qué personaje quieres jugar.</p>
-        <div class="controles-selector-personaje">
-            <label for="selectorPersonaje">Personaje</label>
-            <select id="selectorPersonaje" aria-label="Seleccionar personaje guardado"></select>
-            <button id="btnAbrirPersonaje" type="button">Abrir personaje</button>
+        <p>Busca una ficha guardada por nombre o crea un personaje nuevo. La ficha completa se muestra después de elegir con qué personaje quieres jugar.</p>
+        <div class="selector-personaje-barra">
+            <div class="campo-buscador-personaje">
+                <label for="buscadorPersonajes">Buscar personaje</label>
+                <input id="buscadorPersonajes" type="search" placeholder="Nombre del personaje" autocomplete="off">
+            </div>
             <button id="btnNuevoPersonaje" type="button">Nuevo personaje</button>
         </div>
+        <div class="selector-personaje-grid" id="listadoPersonajes" aria-live="polite"></div>
+    </section>
+            <button id="btnNuevoPersonaje" type="button">Nuevo personaje</button>
+        </div>
+        <div class="selector-personaje-grid" id="listadoPersonajes" aria-live="polite"></div>
     </section>
 
     <div class="panel-Personaje cabecera-personaje oculto" id="cabeceraFicha">
