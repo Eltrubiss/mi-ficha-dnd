@@ -446,6 +446,21 @@ let libroDeReglasBasicas = {
   dotes: [
     {    }
   ],
+  estados: [
+    {
+      id: "agarrado",
+      nombre: "Agarrado",
+      descripcionResum: "Tu velocidad es 0, tienes desventaja en el ataque, pueden desplazarte.",
+      descripcion: `
+        Mientras tengas la condicion de Agarrado experimentas los siguientes efectos:
+        <ul style="margin-top: 5px;">
+          <li> <strong>Velocidad</strong> Tu velocidad es 0 y no puede aumentar. </li>
+          <li> <strong>Ataques Afectados.</strong> Tienes desventaja en las tiradas de ataque contra cualquier objetivo que no sea el que te está agarrando. </li>
+          <li> <strong>Móvil</strong> Quien te está agarrando puede arrastrarte o llevarte cuando se mueve, pero cada pie de movimiento le cuesta 1 pie adicional a menos que seas Diminuto o dos o más tamaños más pequeño que él.
+        </ul>
+      `
+    }
+  ]
   
 };
 
