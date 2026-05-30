@@ -1,5 +1,10 @@
 const CLAVE_PERSONAJE_ACTIVO = "miFichaDnd.personajeActivoId";
+const CLAVE_INDICE_PERSONAJES = "miFichaDnd.personajes";
+const CLAVE_ABRIR_FICHA_TRAS_RECARGA = "miFichaDnd.abrirFichaTrasRecarga";
 const PREFIJO_CLAVE_PERSONAJE = "miFichaDnd.personaje.";
+let buscadorPersonajes = null;
+let listadoPersonajes = null;
+let btnNuevoPersonaje = null;
 
 const personajePorDefecto = {
   nombre: "Sin nombre",
@@ -147,11 +152,8 @@ function cargarOCrearPersonajeActivo() {
   return personajeNuevo;
 }
 
-const personajeActual = cargarOCrearPersonajeActivo();
-window.personajeActual = personajeActual;
+window.personajeActual = cargarOCrearPersonajeActivo();
 
-const CLAVE_INDICE_PERSONAJES = "miFichaDnd.personajes";
-const PREFIJO_CLAVE_PERSONAJE = "miFichaDnd.personaje.";
 
 function clonarDatosPersonaje(datos) {
   return JSON.parse(JSON.stringify(datos || {}));
@@ -248,6 +250,9 @@ function guardarPersonajeActual() {
     JSON.stringify(personajeActual)
   );
   actualizarIndicePersonajes(personajeActual);
+  if (typeof renderSelectorPersonajes === "function") {
+    renderSelectorPersonajes();
+  }
 
   return personajeActual;
 }
@@ -1685,10 +1690,16 @@ document.getElementById("competenciasBtn")?.click();
 //  VISTA BUILD Y SELECTOR DE NIVEL
 // ══════════════════════════════════════════════
 
+const vistaSelectorPersonaje = document.getElementById("vistaSelectorPersonaje");
+const cabeceraFicha = document.getElementById("cabeceraFicha");
 const vistaPersonaje = document.getElementById("vistaPersonaje");
 const vistaBuild = document.getElementById("vistaBuild");
 const btnVistaBuild = document.getElementById("btnVistaBuild");
 const btnVistaPersonaje = document.getElementById("btnVistaPersonaje");
+buscadorPersonajes = document.getElementById("buscadorPersonajes");
+listadoPersonajes = document.getElementById("listadoPersonajes");
+btnNuevoPersonaje = document.getElementById("btnNuevoPersonaje");
+const btnCambiarPersonaje = document.getElementById("btnCambiarPersonaje");
 const selectorNivelPersonaje = document.getElementById("selectorNivelPersonaje");
 const buildAvisos = document.getElementById("buildAvisos");
 const buildNiveles = document.getElementById("buildNiveles");
@@ -1700,6 +1711,180 @@ function textoSeguro(valor) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+
+function obtenerPersonajeActivoId() {
+  try {
+    return localStorage.getItem(CLAVE_PERSONAJE_ACTIVO) || personajeActual.id || "";
+  } catch (error) {
+    console.warn("No se pudo leer el personaje activo desde localStorage", error);
+    return personajeActual.id || "";
+  }
+}
+
+function guardarPersonajeActivoId(id) {
+  try {
+    localStorage.setItem(CLAVE_PERSONAJE_ACTIVO, id);
+  } catch (error) {
+    console.warn("No se pudo guardar el personaje activo en localStorage", error);
+  }
+}
+
+function obtenerNombreClase(claseId) {
+  return libroDeReglasBasicas.clases.find(clase => clase.id === claseId)?.nombre || claseId || "Clase";
+}
+
+function normalizarTextoBusqueda(valor) {
+  return String(valor || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function obtenerNombreRaza(razaId) {
+  return libroDeReglasBasicas.razas.find(raza => raza.id === razaId)?.nombre || razaId || "Raza";
+}
+
+function obtenerSubclasePorId(claseId, subclaseId) {
+  return obtenerClasePorId(claseId)?.subclases?.find(subclase => subclase.id === subclaseId) || null;
+}
+
+function describirClasePersonaje(personaje, numeroSlot) {
+  const claseId = personaje[`clase${numeroSlot}`] || "";
+  const nivel = Number(personaje[`nivelClase${numeroSlot}`]) || 0;
+  if (!claseId || nivel <= 0) return null;
+
+  const clase = obtenerClasePorId(claseId);
+  const subclase = obtenerSubclasePorId(claseId, personaje[`subclase${numeroSlot}`]);
+  const textoSubclase = subclase ? ` (${subclase.nombre})` : "";
+
+  return `${clase?.nombre || claseId} ${nivel}${textoSubclase}`;
+}
+
+function crearSubtituloTarjetaPersonaje(personaje) {
+  const raza = obtenerNombreRaza(personaje.raza || personajePorDefecto.raza);
+  const clases = [1, 2, 3]
+    .map(numeroSlot => describirClasePersonaje(personaje, numeroSlot))
+    .filter(Boolean)
+    .join(" / ") || `${obtenerNombreClase(personaje.clase1 || personajePorDefecto.clase1)} ${Number(personaje.nivel) || personajePorDefecto.nivel}`;
+
+  return `${raza}, ${clases} · Nivel ${Number(personaje.nivel) || personajePorDefecto.nivel}`;
+}
+
+function obtenerPersonajesSelector() {
+  const personajes = listarPersonajesGuardados()
+    .map(personaje => cargarPersonajePorId(personaje.id) || normalizarPersonajeGuardado(personaje));
+
+  if (personajeActual.id && !personajes.some(personaje => personaje.id === personajeActual.id)) {
+    personajes.unshift(normalizarPersonajeGuardado(personajeActual));
+  }
+
+  return personajes;
+}
+
+function renderSelectorPersonajes() {
+  if (!listadoPersonajes) return;
+
+  const activoId = obtenerPersonajeActivoId();
+  const busqueda = normalizarTextoBusqueda(buscadorPersonajes?.value);
+  const personajes = obtenerPersonajesSelector()
+    .filter(personaje => normalizarTextoBusqueda(personaje.nombre || personajePorDefecto.nombre).includes(busqueda));
+
+  if (personajes.length === 0) {
+    listadoPersonajes.innerHTML = `<div class="selector-personaje-vacio">No hay personajes que coincidan con la búsqueda.</div>`;
+    return;
+  }
+
+  listadoPersonajes.innerHTML = personajes
+    .map(personaje => `
+      <button type="button" class="tarjeta-personaje ${personaje.id === activoId ? "activa" : ""}" data-personaje-id="${textoSeguro(personaje.id)}">
+        <h3>${textoSeguro(personaje.nombre || personajePorDefecto.nombre)}</h3>
+        <p>${textoSeguro(crearSubtituloTarjetaPersonaje(personaje))}</p>
+      </button>
+    `)
+    .join("");
+
+  listadoPersonajes.querySelectorAll(".tarjeta-personaje").forEach(tarjeta => {
+    tarjeta.addEventListener("click", () => activarPersonajeGuardado(tarjeta.dataset.personajeId));
+  });
+}
+
+function mostrarSelectorPersonajes() {
+  vistaSelectorPersonaje?.classList.remove("oculto");
+  cabeceraFicha?.classList.add("oculto");
+  vistaPersonaje?.classList.add("oculto");
+  vistaBuild?.classList.add("oculto");
+  renderSelectorPersonajes();
+}
+
+function mostrarFichaActiva() {
+  vistaSelectorPersonaje?.classList.add("oculto");
+  cabeceraFicha?.classList.remove("oculto");
+  cambiarVistaPersonaje("personaje");
+}
+
+function marcarAbrirFichaTrasRecarga() {
+  try {
+    sessionStorage.setItem(CLAVE_ABRIR_FICHA_TRAS_RECARGA, "1");
+  } catch (error) {
+    console.warn("No se pudo recordar que debe abrirse la ficha tras recargar", error);
+  }
+}
+
+function debeAbrirFichaTrasRecarga() {
+  try {
+    const debeAbrir = sessionStorage.getItem(CLAVE_ABRIR_FICHA_TRAS_RECARGA) === "1";
+    sessionStorage.removeItem(CLAVE_ABRIR_FICHA_TRAS_RECARGA);
+    return debeAbrir;
+  } catch (error) {
+    console.warn("No se pudo leer el estado de apertura de ficha", error);
+    return false;
+  }
+}
+
+function refrescarFichaCompleta() {
+  marcarAbrirFichaTrasRecarga();
+  window.location.reload();
+}
+
+function activarPersonajeGuardado(id) {
+  if (!id) return;
+
+  const personajeCargado = cargarPersonajePorId(id);
+  if (!personajeCargado) {
+    renderSelectorPersonajes();
+    return;
+  }
+
+  guardarPersonajeActivoId(id);
+
+  if (id === personajeActual.id) {
+    mostrarFichaActiva();
+    return;
+  }
+
+  Object.keys(personajeActual).forEach(clave => delete personajeActual[clave]);
+  Object.assign(personajeActual, personajeCargado);
+  refrescarFichaCompleta();
+}
+
+function crearYActivarNuevoPersonaje() {
+  const ahora = new Date().toISOString();
+  const nuevoPersonaje = normalizarPersonajeGuardado({
+    ...clonarDatosPersonaje(personajePorDefecto),
+    id: crearIdPersonaje(),
+    createdAt: ahora,
+    updatedAt: ahora
+  });
+
+  localStorage.setItem(`${PREFIJO_CLAVE_PERSONAJE}${nuevoPersonaje.id}`, JSON.stringify(nuevoPersonaje));
+  actualizarIndicePersonajes(nuevoPersonaje);
+  guardarPersonajeActivoId(nuevoPersonaje.id);
+  Object.keys(personajeActual).forEach(clave => delete personajeActual[clave]);
+  Object.assign(personajeActual, nuevoPersonaje);
+  refrescarFichaCompleta();
 }
 
 function crearOpcionesNivel() {
@@ -2183,6 +2368,12 @@ function cambiarVistaPersonaje(vista) {
   }
 }
 
+buscadorPersonajes?.addEventListener("input", renderSelectorPersonajes);
+
+btnNuevoPersonaje?.addEventListener("click", crearYActivarNuevoPersonaje);
+
+btnCambiarPersonaje?.addEventListener("click", mostrarSelectorPersonajes);
+
 selectorNivelPersonaje?.addEventListener("change", event => {
   ajustarProgresionANivelTotal(Number(event.target.value));
   refrescarFichaTrasBuild();
@@ -2195,4 +2386,10 @@ btnVistaPersonaje?.addEventListener("click", () => cambiarVistaPersonaje("person
 
 crearOpcionesNivel();
 actualizarResumenPersonaje();
+renderSelectorPersonajes();
 renderBuildPersonaje();
+if (debeAbrirFichaTrasRecarga()) {
+  mostrarFichaActiva();
+} else {
+  mostrarSelectorPersonajes();
+}
