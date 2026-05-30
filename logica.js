@@ -1,3 +1,6 @@
+const CLAVE_PERSONAJE_ACTIVO = "miFichaDnd.personajeActivoId";
+const PREFIJO_CLAVE_PERSONAJE = "miFichaDnd.personaje.";
+
 const personajePorDefecto = {
   nombre: "Sin nombre",
   raza: "humano",
@@ -27,7 +30,250 @@ const personajePorDefecto = {
   pgPorNivel: {}
 };
 
-const personajeActual = window.personajeActual || personajePorDefecto;
+function clonarPersonaje(personaje) {
+  return JSON.parse(JSON.stringify(personaje));
+}
+
+function crearIdPersonaje() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `personaje-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function leerJsonLocalStorage(clave) {
+  try {
+    const valor = localStorage.getItem(clave);
+    return valor ? JSON.parse(valor) : null;
+  } catch (error) {
+    console.warn(`No se pudo leer ${clave} desde localStorage`, error);
+    return null;
+  }
+}
+
+function escribirJsonLocalStorage(clave, valor) {
+  try {
+    localStorage.setItem(clave, JSON.stringify(valor));
+  } catch (error) {
+    console.warn(`No se pudo guardar ${clave} en localStorage`, error);
+  }
+}
+
+function leerPersonajeGuardado(id) {
+  return id ? leerJsonLocalStorage(`${PREFIJO_CLAVE_PERSONAJE}${id}`) : null;
+}
+
+function guardarPersonaje(personaje) {
+  if (!personaje.id) personaje.id = crearIdPersonaje();
+  escribirJsonLocalStorage(`${PREFIJO_CLAVE_PERSONAJE}${personaje.id}`, personaje);
+  return personaje.id;
+}
+
+function guardarPersonajeActual() {
+  const id = guardarPersonaje(personajeActual);
+  try {
+    localStorage.setItem(CLAVE_PERSONAJE_ACTIVO, id);
+  } catch (error) {
+    console.warn("No se pudo guardar el personaje activo en localStorage", error);
+  }
+}
+
+function obtenerIdsPersonajesGuardados() {
+  const ids = [];
+
+  try {
+    for (let indice = 0; indice < localStorage.length; indice++) {
+      const clave = localStorage.key(indice);
+      if (clave?.startsWith(PREFIJO_CLAVE_PERSONAJE)) {
+        ids.push(clave.slice(PREFIJO_CLAVE_PERSONAJE.length));
+      }
+    }
+  } catch (error) {
+    console.warn("No se pudo revisar la lista de personajes guardados", error);
+  }
+
+  return ids;
+}
+
+function normalizarPersonaje(personaje) {
+  return {
+    ...clonarPersonaje(personajePorDefecto),
+    ...clonarPersonaje(personaje || {}),
+    eleccionesRasgos: { ...(personaje?.eleccionesRasgos || {}) },
+    progresionNiveles: { ...(personaje?.progresionNiveles || {}) },
+    pgPorNivel: { ...(personaje?.pgPorNivel || {}) }
+  };
+}
+
+function crearPersonajeNuevo(base = personajePorDefecto) {
+  const personaje = normalizarPersonaje(base);
+  personaje.id = personaje.id || crearIdPersonaje();
+  return personaje;
+}
+
+function cargarOCrearPersonajeActivo() {
+  let personajeActivoId = null;
+
+  try {
+    personajeActivoId = localStorage.getItem(CLAVE_PERSONAJE_ACTIVO);
+  } catch (error) {
+    console.warn("No se pudo leer el id del personaje activo", error);
+  }
+
+  const personajeGuardado = leerPersonajeGuardado(personajeActivoId);
+  if (personajeGuardado) {
+    const personaje = normalizarPersonaje(personajeGuardado);
+    personaje.id = personaje.id || personajeActivoId;
+    return personaje;
+  }
+
+  const idsGuardados = obtenerIdsPersonajesGuardados();
+  if (idsGuardados.length === 0 && window.personajeDemo) {
+    const personajeDemo = crearPersonajeNuevo(window.personajeDemo);
+    guardarPersonaje(personajeDemo);
+    try {
+      localStorage.setItem(CLAVE_PERSONAJE_ACTIVO, personajeDemo.id);
+    } catch (error) {
+      console.warn("No se pudo marcar el personaje demo como activo", error);
+    }
+    return personajeDemo;
+  }
+
+  const personajeNuevo = crearPersonajeNuevo();
+  guardarPersonaje(personajeNuevo);
+  try {
+    localStorage.setItem(CLAVE_PERSONAJE_ACTIVO, personajeNuevo.id);
+  } catch (error) {
+    console.warn("No se pudo marcar el personaje nuevo como activo", error);
+  }
+  return personajeNuevo;
+}
+
+const personajeActual = cargarOCrearPersonajeActivo();
+window.personajeActual = personajeActual;
+
+const CLAVE_INDICE_PERSONAJES = "miFichaDnd.personajes";
+const PREFIJO_CLAVE_PERSONAJE = "miFichaDnd.personaje.";
+
+function clonarDatosPersonaje(datos) {
+  return JSON.parse(JSON.stringify(datos || {}));
+}
+
+function crearIdPersonaje() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+
+  return `personaje-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function normalizarPersonajeGuardado(datos) {
+  const datosNormalizados = {
+    ...clonarDatosPersonaje(personajePorDefecto),
+    ...clonarDatosPersonaje(datos),
+    eleccionesRasgos: {
+      ...clonarDatosPersonaje(personajePorDefecto.eleccionesRasgos),
+      ...clonarDatosPersonaje(datos?.eleccionesRasgos)
+    },
+    progresionNiveles: {
+      ...clonarDatosPersonaje(personajePorDefecto.progresionNiveles),
+      ...clonarDatosPersonaje(datos?.progresionNiveles)
+    },
+    pgPorNivel: {
+      ...clonarDatosPersonaje(personajePorDefecto.pgPorNivel),
+      ...clonarDatosPersonaje(datos?.pgPorNivel)
+    }
+  };
+
+  datosNormalizados.id = datosNormalizados.id || crearIdPersonaje();
+  datosNormalizados.nivel = Number(datosNormalizados.nivel) || personajePorDefecto.nivel;
+  datosNormalizados.nivelClase1 = Number(datosNormalizados.nivelClase1) || personajePorDefecto.nivelClase1;
+  datosNormalizados.nivelClase2 = Number(datosNormalizados.nivelClase2) || personajePorDefecto.nivelClase2;
+  datosNormalizados.nivelClase3 = Number(datosNormalizados.nivelClase3) || personajePorDefecto.nivelClase3;
+
+  return datosNormalizados;
+}
+
+const personajeActual = normalizarPersonajeGuardado(window.personajeActual);
+window.personajeActual = personajeActual;
+
+function listarPersonajesGuardados() {
+  const indiceGuardado = localStorage.getItem(CLAVE_INDICE_PERSONAJES);
+  const personajes = indiceGuardado ? JSON.parse(indiceGuardado) : [];
+
+  return Array.isArray(personajes) ? personajes : [];
+}
+
+function obtenerMetadatosPersonaje(personaje) {
+  return {
+    id: personaje.id,
+    nombre: personaje.nombre || personajePorDefecto.nombre,
+    raza: personaje.raza || personajePorDefecto.raza,
+    clase1: personaje.clase1 || personajePorDefecto.clase1,
+    nivel: Number(personaje.nivel) || personajePorDefecto.nivel,
+    updatedAt: personaje.updatedAt
+  };
+}
+
+function actualizarIndicePersonajes(personaje) {
+  const personajeNormalizado = normalizarPersonajeGuardado(personaje);
+  const indice = listarPersonajesGuardados();
+  const metadatos = obtenerMetadatosPersonaje(personajeNormalizado);
+  const indiceExistente = indice.findIndex(item => item.id === personajeNormalizado.id);
+
+  if (indiceExistente >= 0) {
+    indice[indiceExistente] = metadatos;
+  } else {
+    indice.push(metadatos);
+  }
+
+  indice.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+  localStorage.setItem(CLAVE_INDICE_PERSONAJES, JSON.stringify(indice));
+
+  return indice;
+}
+
+function guardarPersonajeActual() {
+  const ahora = new Date().toISOString();
+  const personajeGuardado = normalizarPersonajeGuardado({
+    ...clonarDatosPersonaje(personajeActual),
+    id: personajeActual.id || crearIdPersonaje(),
+    createdAt: personajeActual.createdAt || ahora,
+    updatedAt: ahora
+  });
+
+  Object.keys(personajeActual).forEach(clave => delete personajeActual[clave]);
+  Object.assign(personajeActual, personajeGuardado);
+
+  localStorage.setItem(
+    `${PREFIJO_CLAVE_PERSONAJE}${personajeActual.id}`,
+    JSON.stringify(personajeActual)
+  );
+  actualizarIndicePersonajes(personajeActual);
+
+  return personajeActual;
+}
+
+function cargarPersonajePorId(id) {
+  const datosGuardados = localStorage.getItem(`${PREFIJO_CLAVE_PERSONAJE}${id}`);
+  if (!datosGuardados) return null;
+
+  return normalizarPersonajeGuardado(JSON.parse(datosGuardados));
+}
+
+function crearNuevoPersonaje() {
+  const ahora = new Date().toISOString();
+  const nuevoPersonaje = normalizarPersonajeGuardado({
+    ...clonarDatosPersonaje(personajePorDefecto),
+    id: crearIdPersonaje(),
+    createdAt: ahora,
+    updatedAt: ahora
+  });
+
+  Object.keys(personajeActual).forEach(clave => delete personajeActual[clave]);
+  Object.assign(personajeActual, nuevoPersonaje);
+  guardarPersonajeActual();
+
+  return personajeActual;
+}
 
 function normalizarNivelClase(valor) {
   const nivel = Number(valor) || 0;
@@ -601,7 +847,8 @@ function guardarEstadoVida() {
     hpTemporales: personajeActual.hpTemporales,
     inspiracion: personajeActual.inspiracion
   };
-  localStorage.setItem("creadorDndPersonaje", JSON.stringify(estado));
+  escribirJsonLocalStorage("creadorDndPersonaje", estado);
+  guardarPersonajeActual();
 }
 function aplicarCuracion(valor) {
   const hpMax = detalleEstadisticas.PG.total;
@@ -659,12 +906,8 @@ document.getElementById("btnTemporales")
 document.getElementById("chkInspiracion")
   .addEventListener("change", alternarInspiracion);
 
-const savedState = JSON.parse(localStorage.getItem("creadorDndPersonaje") || "{}");
-personajeActual.hpActual = savedState.hpActual ?? personajeActual.hpActual;
-personajeActual.hpTemporales = savedState.hpTemporales ?? personajeActual.hpTemporales;
-personajeActual.inspiracion = savedState.inspiracion ?? personajeActual.inspiracion;
-
 renderVida();
+guardarPersonajeActual();
 ///////////////////// ARMADURAS /////////////////////
 const { caTotal, textoArmadura, detalle } = calcularCA(
   personajeConBonos,
@@ -1092,7 +1335,7 @@ function renderRasgos() {
     // ==========================================
     clasesActivas.filter(slot => slot.clase && slot.nivel > 0).forEach(slot => {
         html += `<details open class="desplegable-seccion" style="margin-top: 15px;">
-                    <summary class="desplegable-titulo">Clase ${slot.numeroSlot}: ${slot.clase.nombre} ${slot.nivel}</summary>
+                    <summary class="desplegable-titulo">Clase ${slot.numeroSlot}: ${slot.clase.nombre} nivel ${slot.nivel}</summary>
                     <div class="desplegable-contenido">`;
         
         if (slot.clase.rasgos && slot.clase.rasgos.length > 0) {
@@ -1819,6 +2062,7 @@ function actualizarResumenPersonaje() {
   document.getElementById("info-personaje").innerText = `${razaNombre}, ${clasesTexto} · Nivel ${personajeActual.nivel}`;
   document.getElementById("BC").innerText = `+${calcularBonificadorCompetencia()}`;
   if (selectorNivelPersonaje) selectorNivelPersonaje.value = String(personajeActual.nivel);
+  guardarPersonajeActual();
 }
 
 function refrescarFichaTrasBuild() {
@@ -1846,6 +2090,7 @@ function conectarControlesNivelesBuild() {
       }
 
       refrescarFichaTrasBuild();
+      guardarPersonajeActual();
       renderBuildPersonaje();
     });
   });
@@ -1862,6 +2107,7 @@ function conectarControlesNivelesBuild() {
         delete personajeActual.pgPorNivel[nivel];
         actualizarPuntosGolpe();
         renderVida();
+        guardarPersonajeActual();
         return;
       }
 
@@ -1870,6 +2116,7 @@ function conectarControlesNivelesBuild() {
       event.target.value = personajeActual.pgPorNivel[nivel];
       actualizarPuntosGolpe();
       renderVida();
+      guardarPersonajeActual();
     });
 
     input.addEventListener("blur", event => {
@@ -1884,9 +2131,11 @@ function conectarControlesNivelesBuild() {
       event.target.value = 1;
       actualizarPuntosGolpe();
       renderVida();
+      guardarPersonajeActual();
     })
   });
 }
+
 
 
 function conectarControlesBuild() {

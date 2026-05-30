@@ -1,4 +1,4 @@
-window.personajeActual = {
+window.personajeDemo = {
   nombre: "Gerald",
   raza: "elfo",
   subraza: "altoelfo",
@@ -22,9 +22,8 @@ window.personajeActual = {
   escudo: "escudonormal",
   hpActual: 0,
   hpTemporales: 0,
-  Inspiracion: false,
+  inspiracion: false,
   eleccionesRasgos: {},
   progresionNiveles: {},
   pgPorNivel: {}
 };
-
