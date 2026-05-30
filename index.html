@@ -353,9 +353,72 @@
             border-radius: 10px;
             background: white;
             color: #3d2b20;
-            padding: 8px 12px;
+            padding: 10px 12px;
+            font-weight: 700;
+        }
+        .campo-buscador-personaje input {
+            width: 100%;
+        }
+        .selector-personaje-grid {
+            display: grid;
+            gap: 14px;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .tarjeta-personaje {
+            background: #fffaf2;
+            border: 2px solid #dccbb0;
+            border-radius: 14px;
+            color: #3d2b20;
+            cursor: pointer;
+            padding: 16px;
+            text-align: left;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+            width: 100%;
+        }
+        .tarjeta-personaje:hover,
+        .tarjeta-personaje:focus-visible {
+            border-color: #df702c;
+            box-shadow: 0 6px 16px rgba(90, 64, 53, 0.16);
+            outline: none;
+            transform: translateY(-2px);
+        }
+        .tarjeta-personaje.activa {
+            border-color: #5a4035;
+        }
+        .tarjeta-personaje h3 {
+            color: #5a4035;
+            font-family: Georgia, serif;
+            font-size: 20px;
+            margin: 0 0 8px;
+        }
+        .tarjeta-personaje p {
+            color: #6b5a53;
+            font-size: 14px;
+            margin: 0;
+        }
+        .selector-personaje-vacio {
+            background: #fff8ed;
+            border: 1px dashed #c7a89a;
+            border-radius: 12px;
+            color: #6b5a53;
+            grid-column: 1 / -1;
+            padding: 18px;
+            text-align: center;
+        }
+        .selector-personaje-barra button,
+        .controles-personaje button {
+            border: none;
+            border-radius: 10px;
+            background: #5a4035;
+            color: #fff8ed;
+            padding: 10px 14px;
             font-weight: 700;
             cursor: pointer;
+            transition: background-color 0.18s ease, color 0.18s ease;
+        }
+        .selector-personaje-barra button:hover,
+        .controles-personaje button:hover {
+            background-color: #df702c;
         }
         .controles-selector-personaje #selectorPersonaje {
             min-width: min(100%, 420px);
