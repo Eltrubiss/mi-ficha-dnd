@@ -36,6 +36,17 @@ const personajePorDefecto = {
   pgPorNivel: {}
 };
 
+const ESTADISTICAS_PRINCIPALES = [
+  { id: "FUE", nombre: "Fuerza" },
+  { id: "DES", nombre: "Destreza" },
+  { id: "CON", nombre: "Constitución" },
+  { id: "INT", nombre: "Inteligencia" },
+  { id: "SAB", nombre: "Sabiduría" },
+  { id: "CAR", nombre: "Carisma" }
+];
+const ESTADISTICA_MINIMA_REPARTO = 1;
+const ESTADISTICA_MAXIMA_REPARTO = 20;
+
 function clonarPersonaje(personaje) {
   return JSON.parse(JSON.stringify(personaje));
 }
@@ -204,6 +215,12 @@ function normalizarPersonajeGuardado(datos) {
   datosNormalizados.nivelClase1 = Number(datosNormalizados.nivelClase1) || personajePorDefecto.nivelClase1;
   datosNormalizados.nivelClase2 = Number(datosNormalizados.nivelClase2) || personajePorDefecto.nivelClase2;
   datosNormalizados.nivelClase3 = Number(datosNormalizados.nivelClase3) || personajePorDefecto.nivelClase3;
+  ESTADISTICAS_PRINCIPALES.forEach(({ id }) => {
+    const valorNormalizado = Number(datosNormalizados[id]);
+    datosNormalizados[id] = Number.isFinite(valorNormalizado)
+      ? Math.max(ESTADISTICA_MINIMA_REPARTO, Math.min(ESTADISTICA_MAXIMA_REPARTO, valorNormalizado))
+      : personajePorDefecto[id];
+  });
 
   return datosNormalizados;
 }
@@ -578,63 +595,135 @@ if (resultado >= 0) {
 
 const bonifCompetencia = calcularBonificadorCompetencia(); // Bonificador de competencia// Agregar Bonos de Raza
 
-function aplicarBonosDeRasgosDeRaza() {
-    // --- 1. APLICAMOS BONOS DE LA RAZA PRINCIPAL ---
-    if (razaElegida && razaElegida.rasgos) {
-        razaElegida.rasgos.forEach(rasgo => {
-            if (rasgo.efectos) {
-                rasgo.efectos.forEach(efecto => {
-                    if (efecto.tipoDeEfecto === "bono_stat") {
-                        // Sumamos el valor a la estadística del personaje (soportando ambas nomenclaturas)
-                        personajeConBonos[efecto.statAfectada] += (efecto.valor || efecto.valorDelBono || 0);
-                    }
-                });
-            }
-        });
-    }
-
-    // --- ¡LO NUEVO! 2. APLICAMOS BONOS DE LA SUBRAZA ---
-    if (subrazaElegida && subrazaElegida.rasgos) {
-        subrazaElegida.rasgos.forEach(rasgo => {
-            if (rasgo.efectos) {
-                rasgo.efectos.forEach(efecto => {
-                    if (efecto.tipoDeEfecto === "bono_stat") {
-                        // Hacemos exactamente lo mismo: sumar a la estadística
-                        personajeConBonos[efecto.statAfectada] += (efecto.valor || efecto.valorDelBono || 0);
-                    }
-                });
-            }
-        });
-    }
-}
-if (razaElegida) {
-aplicarBonosDeRasgosDeRaza();
+function obtenerBonoStatDesdeRasgos(rasgos, statId) {
+  return (rasgos || []).reduce((total, rasgo) => {
+    return total + (rasgo.efectos || []).reduce((subtotal, efecto) => {
+      if (efecto.tipoDeEfecto !== "bono_stat" || efecto.statAfectada !== statId) return subtotal;
+      return subtotal + (efecto.valor || efecto.valorDelBono || 0);
+    }, 0);
+  }, 0);
 }
 
-document.getElementById("FUE").innerText = personajeConBonos.FUE;
-document.getElementById("DES").innerText = personajeConBonos.DES;
-document.getElementById("CON").innerText = personajeConBonos.CON;
-document.getElementById("INT").innerText = personajeConBonos.INT;
-document.getElementById("SAB").innerText = personajeConBonos.SAB;
-document.getElementById("CAR").innerText = personajeConBonos.CAR;
+function obtenerBonoRacialStat(statId) {
+  return obtenerBonoStatDesdeRasgos(razaElegida?.rasgos, statId)
+    + obtenerBonoStatDesdeRasgos(subrazaElegida?.rasgos, statId);
+}
 
-document.getElementById("mod-FUE").innerText = calcularModificador(personajeConBonos.FUE);
-document.getElementById("mod-DES").innerText = calcularModificador(personajeConBonos.DES);
-document.getElementById("mod-CON").innerText = calcularModificador(personajeConBonos.CON);
-document.getElementById("mod-INT").innerText = calcularModificador(personajeConBonos.INT);
-document.getElementById("mod-SAB").innerText = calcularModificador(personajeConBonos.SAB);
-document.getElementById("mod-CAR").innerText = calcularModificador(personajeConBonos.CAR);
+function calcularPersonajeConBonos() {
+  const personajeCalculado = { ...personajeActual };
+  ESTADISTICAS_PRINCIPALES.forEach(({ id }) => {
+    personajeCalculado[id] = (Number(personajeActual[id]) || 0) + obtenerBonoRacialStat(id);
+  });
+  return personajeCalculado;
+}
+
+let modFUE = 0;
+let modDES = 0;
+let modCON = 0;
+let modINT = 0;
+let modSAB = 0;
+let modCAR = 0;
+
+function actualizarVariablesModificadores() {
+  modFUE = calcularModificadorNumero(personajeConBonos.FUE);
+  modDES = calcularModificadorNumero(personajeConBonos.DES);
+  modCON = calcularModificadorNumero(personajeConBonos.CON);
+  modINT = calcularModificadorNumero(personajeConBonos.INT);
+  modSAB = calcularModificadorNumero(personajeConBonos.SAB);
+  modCAR = calcularModificadorNumero(personajeConBonos.CAR);
+}
+
+function actualizarValoresEstadisticasEnFicha() {
+  ESTADISTICAS_PRINCIPALES.forEach(({ id }) => {
+    const valorElemento = document.getElementById(id);
+    const modificadorElemento = document.getElementById(`mod-${id}`);
+    if (valorElemento) valorElemento.innerText = personajeConBonos[id];
+    if (modificadorElemento) modificadorElemento.innerText = calcularModificador(personajeConBonos[id]);
+  });
+}
+
+function obtenerClaseSignoValor(valor) {
+  if (valor > 0) return "positivo";
+  if (valor < 0) return "negativo";
+  return "";
+}
+
+function aplicarClaseSignoValor(elemento, valor) {
+  if (!elemento) return;
+  elemento.classList.remove("positivo", "negativo");
+  const claseSigno = obtenerClaseSignoValor(valor);
+  if (claseSigno) elemento.classList.add(claseSigno);
+  if (valor > 0) elemento.classList.add("positivo");
+  if (valor < 0) elemento.classList.add("negativo");
+}
+
+function actualizarResumenEstadisticasBuild() {
+  ESTADISTICAS_PRINCIPALES.forEach(({ id }) => {
+    const base = Number(personajeActual[id]) || 0;
+    const raza = obtenerBonoRacialStat(id);
+    const total = base + raza;
+    const baseElemento = document.getElementById(`buildStatBase-${id}`);
+    const razaElemento = document.getElementById(`buildStatRaza-${id}`);
+    const totalElemento = document.getElementById(`buildStatTotal-${id}`);
+    const modElemento = document.getElementById(`buildStatMod-${id}`);
+
+    if (baseElemento) baseElemento.innerText = base;
+    if (razaElemento) {
+      razaElemento.innerText = formatoValor(raza);
+      aplicarClaseSignoValor(razaElemento, raza);
+    }
+    if (totalElemento) {
+      totalElemento.innerText = total;
+      aplicarClaseSignoValor(totalElemento, total);
+    }
+    if (modElemento) modElemento.innerText = calcularModificador(total);
+  });
+}
+
+function actualizarIniciativa() {
+  const bonoIniciativaActual = sumaDeEfectos("iniciativa", efectos, estado);
+  const iniciativaActual = modDES + bonoIniciativaActual;
+  detalleEstadisticas.Iniciativa.total = iniciativaActual;
+  detalleEstadisticas.Iniciativa.items = [{
+    origen: "Modificador de Destreza",
+    valor: modDES,
+    descripcion: "Destreza final"
+  }];
+
+  if (bonoIniciativaActual) {
+    detalleEstadisticas.Iniciativa.items.push({
+      origen: "Bonos de iniciativa",
+      valor: bonoIniciativaActual,
+      descripcion: "Rasgos que añaden iniciativa"
+    });
+  }
+
+  const iniciativaElemento = document.getElementById("Ini");
+  if (iniciativaElemento) iniciativaElemento.innerText = formatoValor(iniciativaActual);
+}
+
+function actualizarCA() {
+  const resultadoCA = calcularCA(personajeConBonos, armaduraElegida, claseElegida, razaElegida, equipo, estado);
+  detalleEstadisticas.CA.total = resultadoCA.caTotal;
+  detalleEstadisticas.CA.items = resultadoCA.detalle;
+  const caElemento = document.getElementById("CA");
+  const armaduraElemento = document.getElementById("armadura");
+  if (caElemento) caElemento.innerText = resultadoCA.caTotal;
+  if (armaduraElemento) armaduraElemento.innerText = resultadoCA.textoArmadura;
+}
+
+function refrescarEstadisticasPersonaje() {
+  personajeConBonos = calcularPersonajeConBonos();
+  actualizarVariablesModificadores();
+  actualizarValoresEstadisticasEnFicha();
+  actualizarResumenEstadisticasBuild();
+}
+
+refrescarEstadisticasPersonaje();
 ///////////////////////////////////////////////////////////////////
 document.getElementById("nombre-personaje").innerText = personajeActual.nombre;
 document.getElementById("info-personaje").innerText = personajeActual.raza + ", " + personajeActual.clase1 + " " + personajeActual.nivel;
 document.getElementById("BC").innerText = "+" + bonifCompetencia;
-
-let modFUE = calcularModificadorNumero(personajeConBonos.FUE);
-let modDES = calcularModificadorNumero(personajeConBonos.DES);
-let modCON = calcularModificadorNumero(personajeConBonos.CON);
-let modINT = calcularModificadorNumero(personajeConBonos.INT);
-let modSAB = calcularModificadorNumero(personajeConBonos.SAB);
-let modCAR = calcularModificadorNumero(personajeConBonos.CAR);
 
 ////////////////////// || RASGOS || ///////////////////////////////////
 function seCumpleCondicion(condicion, estado) {
@@ -2196,6 +2285,43 @@ function renderSeccionRasgosBuild(titulo, rasgos, contexto) {
   `;
 }
 
+function renderRepartoEstadisticasBuild() {
+  const filas = ESTADISTICAS_PRINCIPALES.map(({ id, nombre }) => {
+    const base = Number(personajeActual[id]) || 0;
+    const bonoRaza = obtenerBonoRacialStat(id);
+    const total = base + bonoRaza;
+    const puedeBajar = base > ESTADISTICA_MINIMA_REPARTO;
+    const puedeSubir = base < ESTADISTICA_MAXIMA_REPARTO;
+
+    return `
+      <div class="build-stat-fila" data-stat="${id}">
+        <span class="build-stat-nombre">${textoSeguro(nombre)} (${id})</span>
+        <div class="build-stat-control" aria-label="Reparto de ${textoSeguro(nombre)}">
+          <button type="button" class="build-stat-ajuste" data-stat="${id}" data-cambio="-1" ${puedeBajar ? "" : "disabled"}>−</button>
+          <span class="build-stat-valor" id="buildStatBase-${id}">${base}</span>
+          <button type="button" class="build-stat-ajuste" data-stat="${id}" data-cambio="1" ${puedeSubir ? "" : "disabled"}>+</button>
+        </div>
+        <span class="build-stat-numero ${obtenerClaseSignoValor(bonoRaza)}" id="buildStatRaza-${id}">${formatoValor(bonoRaza)}</span>
+        <span class="build-stat-numero ${total}" id="buildStatTotal-${id}">${total}</span>
+        <span class="build-stat-numero ${obtenerClaseSignoValor(calcularModificador(total))}" id="buildStatMod-${id}">${calcularModificador(total)}</span>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="build-stats-reparto" aria-label="Ajuste de reparto de estadísticas">
+      <div class="build-stats-header">
+        <span>Característica</span>
+        <span>Reparto</span>
+        <span>Raza</span>
+        <span>Total</span>
+        <span>Mod.</span>
+      </div>
+      ${filas}
+    </div>
+  `;
+}
+
 function renderNivelUnoBuild() {
   const subrazas = razaElegida?.subrazas || [];
   const rasgosRaza = razaElegida?.rasgos || [];
@@ -2228,7 +2354,8 @@ function renderNivelUnoBuild() {
           <select id="buildClase">${renderOpcionesSeleccion(libroDeReglasBasicas.clases, personajeActual.clase1)}</select>
         </div>
       </div>
-            <div class="build-rasgos-columna">
+      ${renderRepartoEstadisticasBuild()}
+      <div class="build-rasgos-columna">
         ${renderSeccionRasgosBuild(`Raza: ${razaElegida?.nombre || "—"}`, rasgosRaza, "raza")}
         ${renderSeccionRasgosBuild(`Subraza: ${subrazaElegida?.nombre || "—"}`, rasgosSubraza, "subraza")}
         ${renderSeccionRasgosBuild(`Clase: ${nombreClase}`, rasgosClase, "clase1")}
@@ -2318,9 +2445,13 @@ function actualizarResumenPersonaje() {
 
 function refrescarFichaTrasBuild() {
   recalcularClasesDesdeProgresion();
+  refrescarEstadisticasPersonaje();
   actualizarResumenPersonaje();
   actualizarPuntosGolpe();
   renderVida();
+  if (typeof actualizarIniciativa === "function") actualizarIniciativa();
+  if (typeof actualizarCA === "function") actualizarCA();
+  if (typeof renderCompetencias === "function") renderCompetencias();
 }
 
 function conectarControlesNivelesBuild() {
@@ -2396,7 +2527,27 @@ function conectarControlesNivelesBuild() {
   });
 }
 
+function conectarControlesRepartoEstadisticasBuild() {
+  document.querySelectorAll(".build-stat-ajuste").forEach(boton => {
+    boton.addEventListener("click", event => {
+      const statId = event.currentTarget.dataset.stat;
+      const cambio = Number(event.currentTarget.dataset.cambio) || 0;
+      if (!ESTADISTICAS_PRINCIPALES.some(({ id }) => id === statId) || cambio === 0) return;
 
+      const valorAnterior = Number(personajeActual[statId]) || personajePorDefecto[statId];
+      const valorNuevo = Math.max(
+        ESTADISTICA_MINIMA_REPARTO,
+        Math.min(ESTADISTICA_MAXIMA_REPARTO, valorAnterior + cambio)
+      );
+      if (valorNuevo === valorAnterior) return;
+
+      personajeActual[statId] = valorNuevo;
+      refrescarFichaTrasBuild();
+      marcarPersonajeModificado();
+      renderBuildPersonaje();
+    });
+  });
+}
 
 function conectarControlesBuild() {
   document.getElementById("buildNombre")?.addEventListener("input", event => {
@@ -2414,7 +2565,7 @@ function conectarControlesBuild() {
     personajeActual.subraza = "";
     subrazaElegida = null;
     marcarPersonajeModificado();
-    actualizarResumenPersonaje();
+    refrescarFichaTrasBuild();
     renderBuildPersonaje();
   });
 
@@ -2435,6 +2586,7 @@ function conectarControlesBuild() {
     renderBuildPersonaje();
   });
 
+  conectarControlesRepartoEstadisticasBuild();
   conectarControlesNivelesBuild();
 }
 

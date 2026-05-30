@@ -530,6 +530,95 @@
             font-size: 12px;
             line-height: 1.35;
         }
+
+        .build-stats-reparto {
+            background: #fff8ed;
+            border: 1px solid #ead8c6;
+            border-radius: 12px;
+            margin: 0 0 14px;
+            overflow: hidden;
+        }
+        .build-stats-header,
+        .build-stat-fila {
+            display: grid;
+            grid-template-columns: minmax(105px, 1.1fr) minmax(132px, 1.2fr) minmax(72px, 0.75fr) minmax(72px, 0.75fr) minmax(72px, 0.75fr);
+            align-items: center;
+            gap: 8px;
+            padding: 9px 12px;
+        }
+        .build-stats-header {
+            background: #ead8c6;
+            color: #5a4035;
+            font-size: 12px;
+            font-weight: 700;
+            align-items: center;
+            text-transform: uppercase;
+        }
+        .build-stat-fila {
+            border-top: 1px solid #ead8c6;
+            color: #3d2b20;
+        }
+        .build-stat-nombre {
+            font-weight: 700;
+        }
+        .build-stat-control {
+            align-items: center;
+            background: white;
+            border: 1px solid #c7a89a;
+            border-radius: 999px;
+            display: grid;
+            grid-template-columns: 34px 1fr 34px;
+            overflow: hidden;
+        }
+        .build-stat-control button {
+            background: #f3ead7;
+            border: 0;
+            color: #5a4035;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 700;
+            min-height: 34px;
+        }
+        .build-stat-control button:hover {
+            background: #df702c;
+            color: white;
+        }
+        .build-stat-control button:disabled {
+            cursor: not-allowed;
+            opacity: 0.45;
+        }
+        .build-stat-valor,
+        .build-stat-numero {
+            font-weight: 700;
+            text-align: center;
+        }
+        .build-stat-numero.positivo {
+            color: #5bc553;
+        }
+        .build-stat-numero.negativo {
+            color: #db3425;
+        }
+        @media (max-width: 700px) {
+            .build-stats-header,
+            .build-stat-fila {
+                grid-template-columns: 1fr;
+                gap: 5px;
+            }
+            .build-stats-header span:not(:first-child) {
+                display: none;
+            }
+            .build-stat-fila > span::before {
+                color: #6b5a53;
+                display: inline-block;
+                font-size: 11px;
+                font-weight: 700;
+                margin-right: 6px;
+                text-transform: uppercase;
+            }
+            .build-stat-fila > span:nth-child(3)::before { content: "Raza"; }
+            .build-stat-fila > span:nth-child(4)::before { content: "Total"; }
+            .build-stat-fila > span:nth-child(5)::before { content: "Mod."; }
+        }
         .build-rasgos {
             display: flex;
             flex-wrap: wrap;
