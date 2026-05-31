@@ -31,6 +31,8 @@ const personajePorDefecto = {
   hpActual: 0,
   hpTemporales: 0,
   inspiracion: false,
+  concentracion: false,
+  estadosActivos: [],
   eleccionesRasgos: {},
   progresionNiveles: {},
   pgPorNivel: {}
@@ -110,6 +112,11 @@ function obtenerIdsPersonajesGuardados() {
   return ids;
 }
 
+function normalizarListaEstados(estados) {
+  if (!Array.isArray(estados)) return [];
+  return [...new Set(estados.map(estadoId => String(estadoId || "").trim()).filter(Boolean))];
+}
+
 function normalizarPersonaje(personaje) {
   const datos = clonarPersonaje(personaje || {});
   if (Object.prototype.hasOwnProperty.call(datos, "Inspiracion")
@@ -121,6 +128,8 @@ function normalizarPersonaje(personaje) {
   return {
     ...clonarPersonaje(personajePorDefecto),
     ...datos,
+    concentracion: Boolean(datos.concentracion),
+    estadosActivos: normalizarListaEstados(datos.estadosActivos),
     eleccionesRasgos: { ...(datos.eleccionesRasgos || {}) },
     progresionNiveles: { ...(datos.progresionNiveles || {}) },
     pgPorNivel: { ...(datos.pgPorNivel || {}) }
@@ -196,6 +205,8 @@ function normalizarPersonajeGuardado(datos) {
   const datosNormalizados = {
     ...clonarDatosPersonaje(personajePorDefecto),
     ...datosCompatibles,
+    concentracion: Boolean(datosCompatibles.concentracion),
+    estadosActivos: normalizarListaEstados(datosCompatibles.estadosActivos),
     eleccionesRasgos: {
       ...clonarDatosPersonaje(personajePorDefecto.eleccionesRasgos),
       ...clonarDatosPersonaje(datosCompatibles.eleccionesRasgos)
@@ -978,21 +989,119 @@ function renderVida() {
 
   document.getElementById("chkInspiracion").checked =
     Boolean(personajeActual.inspiracion);
-}
+  document.getElementById("chkConcentracion").checked =
+    Boolean(personajeActual.concentracion);
+ }
 function guardarEstadoVida() {
   const estado = {
     hpActual: personajeActual.hpActual,
     hpTemporales: personajeActual.hpTemporales,
-    inspiracion: personajeActual.inspiracion
+    inspiracion: personajeActual.inspiracion,
+    concentracion: personajeActual.concentracion,
+    estadosActivos: personajeActual.estadosActivos
   };
   escribirJsonLocalStorage("creadorDndPersonaje", estado);
   marcarPersonajeModificado();
 }
+
+function escaparHtml(valor) {
+  return String(valor ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function obtenerEstadosLibroReglas() {
+  return Array.isArray(libroDeReglasBasicas.estados) ? libroDeReglasBasicas.estados : [];
+}
+
+function obtenerEstadoPorId(estadoId) {
+  return obtenerEstadosLibroReglas().find(estadoRegla => estadoRegla.id === estadoId);
+}
+
+function renderSelectorEstados() {
+  const selector = document.getElementById("selectEstado");
+  if (!selector) return;
+
+  const estadosActivos = new Set(personajeActual.estadosActivos || []);
+  const opciones = obtenerEstadosLibroReglas()
+    .filter(estadoRegla => !estadosActivos.has(estadoRegla.id))
+    .map(estadoRegla => `<option value="${escaparHtml(estadoRegla.id)}">${escaparHtml(estadoRegla.nombre)}</option>`)
+    .join("");
+
+  selector.innerHTML = `<option value="">Agregar estado...</option>${opciones}`;
+}
+
+function renderEstadosActivos() {
+  const contenedor = document.getElementById("estadoTags");
+  if (!contenedor) return;
+
+  const estadosActivos = normalizarListaEstados(personajeActual.estadosActivos);
+  personajeActual.estadosActivos = estadosActivos;
+
+  if (!estadosActivos.length) {
+    contenedor.innerHTML = '<p class="estado-tags-vacio">Sin estados activos.</p>';
+    renderSelectorEstados();
+    return;
+  }
+
+  contenedor.innerHTML = estadosActivos
+    .map(estadoId => obtenerEstadoPorId(estadoId))
+    .filter(Boolean)
+    .map(estadoRegla => `
+      <span class="estado-tag">
+        <button class="estado-tag-quitar" type="button" data-estado-quitar="${escaparHtml(estadoRegla.id)}" aria-label="Quitar ${escaparHtml(estadoRegla.nombre)}">×</button>
+        <button class="estado-tag-nombre" type="button" data-estado-abrir="${escaparHtml(estadoRegla.id)}">${escaparHtml(estadoRegla.nombre)}</button>
+      </span>
+    `)
+    .join("");
+
+  renderSelectorEstados();
+}
+
+function agregarEstadoActivo(estadoId) {
+  if (!obtenerEstadoPorId(estadoId)) return;
+  const estadosActivos = normalizarListaEstados(personajeActual.estadosActivos);
+  if (!estadosActivos.includes(estadoId)) {
+    personajeActual.estadosActivos = [...estadosActivos, estadoId];
+    guardarEstadoVida();
+    renderEstadosActivos();
+  }
+}
+
+function quitarEstadoActivo(estadoId) {
+  const estadosActualizados = normalizarListaEstados(personajeActual.estadosActivos)
+    .filter(estadoActivoId => estadoActivoId !== estadoId);
+  if (estadosActualizados.length !== (personajeActual.estadosActivos || []).length) {
+    personajeActual.estadosActivos = estadosActualizados;
+    guardarEstadoVida();
+    renderEstadosActivos();
+  }
+}
+
+function abrirPopupEstado(estadoId) {
+  const estadoRegla = obtenerEstadoPorId(estadoId);
+  if (!estadoRegla) return;
+
+  const contenido = document.getElementById("popup-estado-contenido");
+  contenido.innerHTML = `
+    <h2>${escaparHtml(estadoRegla.nombre)}</h2>
+    <p>${escaparHtml(estadoRegla.descripcion)}</p>
+  `;
+  document.getElementById("popup-estado").classList.remove("oculto");
+}
+
+function cerrarPopupEstado() {
+  document.getElementById("popup-estado").classList.add("oculto");
+}
 function aplicarCuracion(valor) {
+  const hpAnterior = personajeActual.hpActual;
   const hpMax = detalleEstadisticas.PG.total;
   personajeActual.hpActual = Math.min(
     hpMax,
-    personajeActual.hpActual + valor
+    personajeActual.hpActual + Math.max(0, valor)
   );
   if (personajeActual.hpActual !== hpAnterior) guardarEstadoVida();
   renderVida();
@@ -1026,14 +1135,14 @@ function aplicarTemporales(valor) {
   renderVida();
 }
 
-function aplicarTemporales(valor) {
-  personajeActual.hpTemporales = Math.max(0, valor);
+function alternarInspiracion() {
+  personajeActual.inspiracion = !personajeActual.inspiracion;
   guardarEstadoVida();
   renderVida();
 }
 
-function alternarInspiracion() {
-  personajeActual.inspiracion = !personajeActual.inspiracion;
+function alternarConcentracion() {
+  personajeActual.concentracion = !personajeActual.concentracion;
   guardarEstadoVida();
   renderVida();
 }
@@ -1058,7 +1167,30 @@ document.getElementById("btnTemporales")
 document.getElementById("chkInspiracion")
   .addEventListener("change", alternarInspiracion);
 
+document.getElementById("chkConcentracion")
+  .addEventListener("change", alternarConcentracion);
+
+document.getElementById("btnAgregarEstado")
+  .addEventListener("click", () => {
+    const selector = document.getElementById("selectEstado");
+    agregarEstadoActivo(selector.value);
+    selector.value = "";
+  });
+
+document.getElementById("estadoTags")
+  .addEventListener("click", evento => {
+    const botonQuitar = evento.target.closest("[data-estado-quitar]");
+    if (botonQuitar) {
+      quitarEstadoActivo(botonQuitar.dataset.estadoQuitar);
+      return;
+    }
+
+    const botonAbrir = evento.target.closest("[data-estado-abrir]");
+    if (botonAbrir) abrirPopupEstado(botonAbrir.dataset.estadoAbrir);
+  });
+
 renderVida();
+renderEstadosActivos();
 ///////////////////// ARMADURAS /////////////////////
 const { caTotal, textoArmadura, detalle } = calcularCA(
   personajeConBonos,
