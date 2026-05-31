@@ -47,6 +47,29 @@ const ESTADISTICAS_PRINCIPALES = [
 const ESTADISTICA_MINIMA_REPARTO = 1;
 const ESTADISTICA_MAXIMA_REPARTO = 20;
 
+const HABILIDADES_PERSONAJE = [
+  { nombre: "Acrobacias",         stat: "DES" },
+  { nombre: "Trato con Animales", stat: "SAB" },
+  { nombre: "Arcanos",            stat: "INT" },
+  { nombre: "Atletismo",          stat: "FUE" },
+  { nombre: "Engaño",             stat: "CAR" },
+  { nombre: "Historia",           stat: "INT" },
+  { nombre: "Perspicacia",        stat: "SAB" },
+  { nombre: "Intimidación",       stat: "CAR" },
+  { nombre: "Investigación",      stat: "INT" },
+  { nombre: "Medicina",           stat: "SAB" },
+  { nombre: "Naturaleza",         stat: "INT" },
+  { nombre: "Percepción",         stat: "SAB" },
+  { nombre: "Interpretación",     stat: "CAR" },
+  { nombre: "Persuasión",         stat: "CAR" },
+  { nombre: "Religión",           stat: "INT" },
+  { nombre: "Juego de Manos",     stat: "DES" },
+  { nombre: "Sigilo",             stat: "DES" },
+  { nombre: "Supervivencia",      stat: "SAB" },
+];
+
+let detalleHabilidades = {};
+
 function clonarPersonaje(personaje) {
   return JSON.parse(JSON.stringify(personaje));
 }
@@ -1219,6 +1242,103 @@ function normalizarTextoCompetencia(texto) {
     .toLowerCase();
 }
 
+function obtenerFuentesConEfectos() {
+  return [
+    ...(razaElegida?.rasgos || []).map(rasgo => ({ ...rasgo, origen: razaElegida.nombre })),
+    ...(subrazaElegida?.rasgos || []).map(rasgo => ({ ...rasgo, origen: subrazaElegida.nombre })),
+    ...obtenerRasgosDeClasesDisponibles(),
+    ...obtenerOpcionesSeleccionadasDisponibles()
+  ];
+}
+
+function obtenerCondicionesEfecto(efecto) {
+  if (Array.isArray(efecto.condiciones)) return efecto.condiciones;
+  if (efecto.condicion) return [efecto.condicion];
+  return [];
+}
+
+function efectoTieneCondicionCompetencia(efecto) {
+  return obtenerCondicionesEfecto(efecto)
+    .some(condicion => Object.prototype.hasOwnProperty.call(condicion, "competencia"));
+}
+
+function efectoCumpleCondicionesHabilidad(efecto, contexto) {
+  return obtenerCondicionesEfecto(efecto).every(condicion => {
+    if (Object.prototype.hasOwnProperty.call(condicion, "competencia")
+        && Boolean(condicion.competencia) !== contexto.competencia) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+function obtenerBonosDeHabilidad(nombreHabilidad, esCompetente) {
+  const claveHabilidad = normalizarTextoCompetencia(nombreHabilidad);
+  const contexto = { competencia: Boolean(esCompetente) };
+  const items = [];
+
+  obtenerFuentesConEfectos().forEach(rasgo => {
+    (rasgo.efectos || []).forEach(efecto => {
+      if (efecto.tipoDeEfecto !== "bono_habilidad" || !efecto.habilidadAfectada) return;
+      if (normalizarTextoCompetencia(efecto.habilidadAfectada) !== claveHabilidad) return;
+      if (!efectoTieneCondicionCompetencia(efecto)) return;
+      if (!efectoCumpleCondicionesHabilidad(efecto, contexto)) return;
+
+      items.push({
+        origen: rasgo.nombre || rasgo.origen || "Rasgo",
+        valor: efecto.valor || efecto.valorDelBono || 0,
+        descripcion: rasgo.descripcionResum || `Bono de ${rasgo.origen || "rasgo"}`
+      });
+    });
+  });
+
+  return {
+    total: items.reduce((total, item) => total + item.valor, 0),
+    items
+  };
+}
+
+function abrirPopupHabilidad(nombreHabilidad) {
+  const detalle = detalleHabilidades[nombreHabilidad];
+  if (!detalle) return;
+
+  renderPopupEstadisticas({ [nombreHabilidad]: detalle }, nombreHabilidad);
+  document.getElementById("popup-estadisticas").classList.remove("oculto");
+}
+
+function obtenerBonosDeSalvacion(stat) {
+  const items = [];
+
+  obtenerFuentesConEfectos().forEach(rasgo => {
+    (rasgo.efectos || []).forEach(efecto => {
+      if (efecto.tipoDeEfecto !== "bono_salvacion") return;
+      const salvacionAfectada = efecto.statAfectada || efecto.salvacionAfectada;
+      if (salvacionAfectada !== stat) return;
+      if (!efectoCumpleCondicionesHabilidad(efecto, {})) return;
+
+      items.push({
+        origen: rasgo.nombre || rasgo.origen || "Rasgo",
+        valor: efecto.valor || efecto.valorDelBono || 0,
+        descripcion: rasgo.descripcionResum || `Bono de ${rasgo.origen || "rasgo"}`
+      });
+    });
+  });
+
+  return {
+    total: items.reduce((total, item) => total + item.valor, 0),
+    items
+  };
+}
+
+function abrirPopupSalvacion(stat) {
+  const detalle = detalleSalvaciones[stat];
+  if (!detalle) return;
+
+  renderPopupEstadisticas({ [detalle.nombre]: detalle }, detalle.nombre);
+  document.getElementById("popup-estadisticas").classList.remove("oculto");
+}
+
 function unirCompetenciasPorNombre(...listas) {
   const resultado = [];
   const vistas = new Set();
@@ -1264,15 +1384,12 @@ function obtenerHabilidadesElegidasDesdeRasgos() {
 }
 
 function obtenerHabilidadesDesdeEfectos() {
-  const rasgosConEfectos = [
-    ...(razaElegida?.rasgos || []),
-    ...(subrazaElegida?.rasgos || []),
-    ...obtenerRasgosDeClasesDisponibles(),
-    ...obtenerOpcionesSeleccionadasDisponibles()
-  ];
-
-  return rasgosConEfectos.flatMap(rasgo => (rasgo.efectos || [])
-    .filter(efecto => efecto.tipoDeEfecto === "bono_habilidad" && efecto.habilidadAfectada)
+  return obtenerFuentesConEfectos().flatMap(rasgo => (rasgo.efectos || [])
+    .filter(efecto => (
+      efecto.tipoDeEfecto === "bono_habilidad"
+      && efecto.habilidadAfectada
+      && !efectoTieneCondicionCompetencia(efecto)
+    ))
     .map(efecto => efecto.habilidadAfectada));
 }
 
@@ -1309,12 +1426,29 @@ function renderCompetencias() {
     { stat: "CAR", label: "Carisma" },
   ];
 
+  detalleSalvaciones = {};
+
   const salvacionesHTML = TODAS_SALVACIONES.map(({ stat, label }) => {
     const esCompetente = salvacionesCompetentes.includes(stat);
-    const mod = calcularModificadorNumero(stats[stat]) + (esCompetente ? BC : 0);
+    const modBase = calcularModificadorNumero(stats[stat]);
+    const bonoCompetencia = esCompetente ? BC : 0;
+    const bonosSalvacion = obtenerBonosDeSalvacion(stat);
+    const mod = modBase + bonoCompetencia + bonosSalvacion.total;
     const signo = mod >= 0 ? "+" : "";
+    const nombreSalvacion = `Tirada de Salvación de ${label}`;
+
+    detalleSalvaciones[stat] = {
+      nombre: nombreSalvacion,
+      total: mod,
+      items: [
+        { origen: `Modificador de ${stat}`, valor: modBase, descripcion: `${stat} final: ${stats[stat]}` },
+        ...(esCompetente ? [{ origen: "Competencia", valor: bonoCompetencia, descripcion: "Bonificador de competencia aplicado" }] : []),
+        ...bonosSalvacion.items
+      ]
+    };
+
     return `
-      <div class="comp-fila ${esCompetente ? "competente" : ""}">
+      <div class="comp-fila clickable ${esCompetente ? "competente" : ""}" data-salvacion="${textoSeguro(stat)}">
         <span class="comp-dot ${esCompetente ? "dot-on" : "dot-off"}"></span>
         <span class="comp-mod">${signo}${mod}</span>
         <span class="comp-nombre">${label}</span>
@@ -1322,38 +1456,32 @@ function renderCompetencias() {
   }).join("");
 
   // ── Bloque 2: Habilidades ──
-  // Mapa de habilidad → stat base
-  const HABILIDADES = [
-    { nombre: "Acrobacias",         stat: "DES" },
-    { nombre: "Trato con Animales", stat: "SAB" },
-    { nombre: "Arcanos",            stat: "INT" },
-    { nombre: "Atletismo",          stat: "FUE" },
-    { nombre: "Engaño",             stat: "CAR" },
-    { nombre: "Historia",           stat: "INT" },
-    { nombre: "Perspicacia",        stat: "SAB" },
-    { nombre: "Intimidación",       stat: "CAR" },
-    { nombre: "Investigación",      stat: "INT" },
-    { nombre: "Medicina",           stat: "SAB" },
-    { nombre: "Naturaleza",         stat: "INT" },
-    { nombre: "Percepción",         stat: "SAB" },
-    { nombre: "Interpretación",     stat: "CAR" },
-    { nombre: "Persuasión",         stat: "CAR" },
-    { nombre: "Religión",           stat: "INT" },
-    { nombre: "Juego de Manos",     stat: "DES" },
-    { nombre: "Sigilo",             stat: "DES" },
-    { nombre: "Supervivencia",      stat: "SAB" },
-  ];
 
   // Las habilidades competentes vienen de clase, raza y elecciones hechas en Build.
   const habilidadesCompetentes = obtenerHabilidadesCompetentes();
   const habilidadesCompetentesNormalizadas = habilidadesCompetentes.map(normalizarTextoCompetencia);
 
-  const habilidadesHTML = HABILIDADES.map(({ nombre, stat }) => {
+  detalleHabilidades = {};
+
+  const habilidadesHTML = HABILIDADES_PERSONAJE.map(({ nombre, stat }) => {
     const esCompetente = habilidadesCompetentesNormalizadas.includes(normalizarTextoCompetencia(nombre));
-    const mod = calcularModificadorNumero(stats[stat]) + (esCompetente ? BC : 0);
+    const modBase = calcularModificadorNumero(stats[stat]);
+    const bonoCompetencia = esCompetente ? BC : 0;
+    const bonosHabilidad = obtenerBonosDeHabilidad(nombre, esCompetente);
+    const mod = modBase + bonoCompetencia + bonosHabilidad.total;
     const signo = mod >= 0 ? "+" : "";
+
+    detalleHabilidades[nombre] = {
+      total: mod,
+      items: [
+        { origen: `Modificador de ${stat}`, valor: modBase, descripcion: `${stat} final: ${stats[stat]}` },
+        ...(esCompetente ? [{ origen: "Competencia", valor: bonoCompetencia, descripcion: "Bonificador de competencia aplicado" }] : []),
+        ...bonosHabilidad.items
+      ]
+    };
+
     return `
-      <div class="comp-fila ${esCompetente ? "competente" : ""}">
+      <div class="comp-fila clickable ${esCompetente ? "competente" : ""}" data-habilidad="${textoSeguro(nombre)}">
         <span class="comp-dot ${esCompetente ? "dot-on" : "dot-off"}"></span>
         <span class="comp-mod">${signo}${mod}</span>
         <span class="comp-nombre">${nombre} <small class="comp-stat">(${stat})</small></span>
@@ -1413,6 +1541,14 @@ function renderCompetencias() {
 
     </div>
   `;
+
+  panelVentanas.querySelectorAll("[data-salvacion]").forEach(fila => {
+    fila.addEventListener("click", () => abrirPopupSalvacion(fila.dataset.salvacion));
+  });
+
+  panelVentanas.querySelectorAll("[data-habilidad]").forEach(fila => {
+    fila.addEventListener("click", () => abrirPopupHabilidad(fila.dataset.habilidad));
+  });
 }
 
 // 1. Creamos un "bolsillo" temporal para guardar los rasgos que mostramos en pantalla

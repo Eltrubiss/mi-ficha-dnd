@@ -27,15 +27,20 @@
             flex-direction: column;
             gap: 15px;
         }
+        .columna-derecha {
+            gap: 0px;
+        }
         /* //////////////////// Filas y cajas de estadísticas //////////////////// */
         .fila-stats {
-            display: grid; 
-            grid-template-columns: repeat(6, minmax(40px, 100px));
+            display: grid;
+            grid-template-columns: repeat(6, minmax(68px, 1fr));
+            gap: 8px;
             justify-content: center;
-            padding: 0px;
-            border-radius: 15px;
-            border-top: 2px solid #5a4035;
-            border-bottom: 2px solid #5a4035;
+            padding: 12px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #eadcc4, #fff7eb);
+            border: 1px solid #d2b9a2;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.55);
         }
         .fila-extra {
             display: flex;
@@ -106,19 +111,28 @@
         }
         .panel-ventanas {
             background-color: #f9f2e8; /* Un color más claro para el panel */
-            border-radius: 15px;
-            padding: 20px;/* Espacio para que las cajas no toquen los bordes */
+            border: 1px solid #dccbb0;
+            border-radius: 0 0 18px 18px;
+            box-shadow: 0 12px 28px rgba(90, 64, 53, 0.12);
+            padding: 22px;
             margin: 0 auto; /* Centra todo el panel gigante en el medio de la pantalla */
-            margin-top: -100px;
             width: 100%; /* Evita que el panel se estire infinitamente */
             text-align: center; /* Centra el texto dentro del panel */
         }
         /* //////////////////// Cajas de estadísticas (FUE, DES, CON, etc.) //////////////////// */
         .caja-stat {
-            border-left: 2px solid #c7a89a;
-            border-right: 2px solid #c7a89a;
+            border: 1px solid #d7c3ad;
+            border-radius: 14px;
+            background: #fffaf2;
+            box-shadow: 0 4px 10px rgba(90, 64, 53, 0.10);
             text-align: center; /* Todo el texto centrado */
-            padding: 5px; /* Espacio adentro de la caja */
+            padding: 10px 6px; /* Espacio adentro de la caja */
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+        .caja-stat.clickable:hover {
+            border-color: #df702c;
+            box-shadow: 0 8px 16px rgba(90, 64, 53, 0.16);
+            transform: translateY(-2px);
         }
         .caja-extra {
             border: 2px solid #c7a89a; /* Borde oscuro */
@@ -191,32 +205,70 @@
         }
 
         /* /////////// Caja Barra de Vida /////////////*/
-        .vida-contenedor {
+        .combate-detalles summary {
+            color: #5a4035;
+            cursor: pointer;
+            font-family: Georgia, serif;
+            font-size: 1.35rem;
+            font-weight: 700;
+            list-style: none;
+            margin-bottom: 16px;
+            text-align: left;
+        }
+        .combate-detalles summary::-webkit-details-marker {
+            display: none;
+        }
+        .combate-detalles summary::before {
+            content: "▶";
+            display: inline-block;
+            margin-right: 8px;
+            transition: transform 0.18s ease;
+        }
+        .combate-detalles[open] summary::before {
+            transform: rotate(90deg);
+        }
+        .vida-contenedor,
+        .vida-info,
+        .caja-inspiracion {
             border: 2px solid #c7a89a; /* Borde oscuro */
             border-radius: 10px; /* Bordes redondeados */
             background-color: white; /* Fondo blanco */
+            padding: 12px;
+        }
+        .vida-contenedor {
             text-align: center; /* Todo el texto centrado */
-            padding: 10px;
         }
         .vida-grid {
             display: grid;
-            grid-template-columns: 1.6fr 1fr; /* Dos columnas iguales */
-            gap: 18px; /* Espacio entre las columnas */
-            align-items: start;
+            grid-template-columns: minmax(220px, 1fr) minmax(260px, 1fr);
+            gap: 18px;
+            align-items: stretch;
+        }
+        .vida-seguimiento {
+            display: grid;
+            gap: 12px;
         }
         .vida-info {
             display: grid;
             gap: 8px;
+            align-content: start;
         }
         .vida-info #hpResumen {
             font-size: 1.1rem;
             font-weight: 700;
             color: #5a4035;
             margin: 0;
+            min-height: 1.2em;
+        }
+        .vida-temporales.oculto {
+            display: block;
+            visibility: hidden;
         }
         .vida-temporales {
+            color: #4c7ea8;
+            display: block;
             font-size: 0.95rem;
-            color: #6b5a53;
+            font-weight: 700;
             margin: 0;
         }
         .vida-controles {
@@ -260,21 +312,113 @@
         .botones-vida button:hover {
             background-color: #7a5c43;
         }
-        .chk-inspiracion {
-            display: inline-flex;
+        .caja-inspiracion {
+            color: #5a4035;
+            text-align: left;
+        }
+        .caja-inspiracion .titulo-extra {
+            margin: 0 0 8px 0;
+            text-align: center;
+        }
+        .chk-inspiracion,
+        .chk-concentracion {
+            display: flex;
             align-items: center;
             gap: 8px;
             font-size: 0.95rem;
             color: #5a4035;
             margin-top: 6px;
         }
-        .chk-inspiracion input {
+        .chk-inspiracion input,
+        .chk-concentracion input {
             width: 18px;
             height: 18px;
             border: 1px solid #c7a89a;
             border-radius: 4px;
             background-color: white;
             cursor: pointer;
+        }
+        .estado-panel {
+            grid-column: 1 / -1;
+            border: 2px solid #c7a89a;
+            border-radius: 10px;
+            background-color: white;
+            color: #5a4035;
+            margin-top: 12px;
+            padding: 12px;
+            text-align: left;
+        }
+        .estado-panel label {
+            display: block;
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .estado-agregar {
+            display: flex;
+            gap: 8px;
+        }
+        .estado-agregar select {
+            flex: 1 1 auto;
+            min-width: 0;
+            padding: 8px;
+            border: 1px solid #c7a89a;
+            border-radius: 8px;
+            background-color: white;
+            color: #333;
+        }
+        .estado-agregar button {
+            border: none;
+            border-radius: 8px;
+            background: #5a4035;
+            color: white;
+            cursor: pointer;
+            font-weight: 700;
+            padding: 8px 12px;
+        }
+        .estado-tags {
+            align-items: center;
+            border: 1px dashed #c7a89a;
+            border-radius: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+            min-height: 42px;
+            padding: 8px;
+        }
+        .estado-tag {
+            align-items: center;
+            background: #f9f2e8;
+            border: 1px solid #c7a89a;
+            border-radius: 999px;
+            color: #5a4035;
+            display: inline-flex;
+            font-size: 0.9rem;
+            overflow: hidden;
+        }
+        .estado-tag-quitar,
+        .estado-tag-nombre {
+            border: none;
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+            font: inherit;
+        }
+        .estado-tag-quitar {
+            font-weight: 700;
+            padding: 5px 7px 5px 10px;
+        }
+        .estado-tag-nombre {
+            border-left: 1px solid #c7a89a;
+            padding: 5px 10px 5px 8px;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+        }
+        .estado-tags-vacio {
+            color: #8f7a70;
+            font-size: 0.9rem;
+            margin: 0;
         }
         .vida-barra {
             margin-top: 18px;
@@ -315,8 +459,13 @@
         .cabecera-personaje {
             display: grid;
             grid-template-columns: minmax(180px, 1fr) auto auto;
-            align-items: start;
+            align-items: end;
             gap: 18px;
+        }
+        .personaje-principal {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
         .selector-inicial-personaje {
             background-color: #f9f2e8;
@@ -352,8 +501,7 @@
             gap: 10px;
             flex-wrap: wrap;
         }
-        .campo-buscador-personaje label,
-        .controles-personaje label {
+        .campo-buscador-personaje label{
             color: #5a4035;
             font-weight: 700;
             font-size: 14px;
@@ -366,6 +514,11 @@
             color: #3d2b20;
             padding: 10px 12px;
             font-weight: 700;
+        }
+        .controles-personaje select {
+            min-height: 58px;
+            min-width: 92px;
+            padding: 18px 22px;
         }
         .campo-buscador-personaje input {
             width: 100%;
@@ -417,7 +570,8 @@
             text-align: center;
         }
         .selector-personaje-barra button,
-        .controles-personaje button {
+        .boton-cambiar-personaje {
+            align-self: flex-start;
             border: none;
             border-radius: 10px;
             background: #5a4035;
@@ -428,7 +582,7 @@
             transition: background-color 0.18s ease, color 0.18s ease;
         }
         .selector-personaje-barra button:hover,
-        .controles-personaje button:hover {
+        .boton-cambiar-personaje:hover {
             background-color: #df702c;
         }
         .acciones-personaje {
@@ -551,7 +705,6 @@
             color: #5a4035;
             font-size: 12px;
             font-weight: 700;
-            align-items: center;
             text-transform: uppercase;
         }
         .build-stat-fila {
@@ -870,6 +1023,23 @@
             .acciones-personaje {
                 justify-content: flex-start;
             }
+            .vida-grid {
+                grid-template-columns: 1fr;
+            }
+            .fila-ventanas {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                border-bottom: 1px solid #dccbb0;
+                border-radius: 18px;
+                padding: 10px;
+            }
+            .fila-ventanas button,
+            .tab-activa {
+                border-radius: 12px !important;
+                transform: none;
+            }
+            .panel-ventanas {
+                border-radius: 18px;
+            }
             .selector-inicial-personaje {
                 margin: 20px auto;
                 padding: 22px;
@@ -878,35 +1048,68 @@
         }
         /* //////////////// Ventanas ////////////////// */
         .fila-ventanas {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(80px, 150px));
-            justify-content: center;
+            background: #e8d8c8;
+            border: 1px solid #dccbb0;
+            border-bottom: none;
+            border-radius: 18px 18px 0 0;
+            gap: 8px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            padding: 10px 10px 0;
+            width: 100%;
         }
         .fila-ventanas button {
-            border-radius: 10px;
-            border: none;
-            background: #bea98d;
-            text-align: center;
-            padding: 10px 12px;
-            padding-bottom:100px;
-            position: relative;
-            font-weight: 700;
+            align-items: center;
+            background: rgba(255, 250, 242, 0.72);
+            border: 1px solid transparent;
+            border-radius: 14px 14px 0 0;
+            color: #5a4035;
             cursor: pointer;
-            transition: background-color 0.18s ease
+            display: inline-flex;
+            font-weight: 700;
+            gap: 8px;
+            justify-content: center;
+            min-height: 46px;
+            padding: 12px 10px;
+            position: relative;
+            text-align: center;
+            transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
         }
+        .fila-ventanas button::before {
+            font-size: 1rem;
+            line-height: 1;
+        }
+        #competenciasBtn::before { content: "◆"; }
+        #rasgosBtn::before { content: "✦"; }
+        #hechizosBtn::before { content: "✧"; }
+        #equipoBtn::before { content: "▣"; }
         .fila-ventanas button:hover {
-            background-color: #f3ead7;
+            background-color: #fffaf2;
+            border-color: #dfb47d;
             color: #df702c;
+            transform: translateY(-2px);
         }
         .fila-ventanas button:active {
             background-color: #e0c8b0;
+            transform: translateY(0);
         }
         
         /* ── Botón activo ── */
         .tab-activa {
-            background-color: #f3ead7 !important;
-            color: #df702c !important;
-            border-bottom: 3px solid #df702c !important;
+            background-color: #f9f2e8 !important;
+            border-color: #dccbb0 #dccbb0 #f9f2e8 !important;
+            box-shadow: 0 -4px 12px rgba(90, 64, 53, 0.08);
+            color: #5a4035 !important;
+            transform: translateY(1px);
+        }
+        .tab-activa::after {
+            background: #df702c;
+            border-radius: 999px;
+            bottom: 6px;
+            content: "";
+            height: 3px;
+            left: 22%;
+            position: absolute;
+            right: 22%;
         }
 
         /* ── Competencias ── */
@@ -1160,6 +1363,12 @@
             overflow: hidden;
             text-overflow: ellipsis; /* Si el texto es muy largo pone "..." automáticamente */
         }
+        .rasgo-seleccionado-ficha {
+            margin: -2px 0 10px 28px;
+        }
+        .rasgo-seleccionado-ficha .build-rasgo-card {
+            margin-bottom: 0;
+        }
         /*/////////////////Ventanas laterales de Rasgos//////////////////////////////*/
         .desplegable-seccion {
             background-color: #f9f2e8; /* Fondo suave pergamino */
@@ -1242,14 +1451,15 @@
     </section>
 
     <div class="panel-Personaje cabecera-personaje oculto" id="cabeceraFicha">
-        <div class="datos-personaje">
-            <h2 class="titulo-nombre" id="nombre-personaje"> [Nombre]</h2>
-            <p class="Info-personaje" id="info-personaje">[Raza], [Clase] [Nivel]</p>
+        <div class="personaje-principal">
+            <button id="btnCambiarPersonaje" class="boton-cambiar-personaje" type="button">&lt;- Cambiar personaje</button>
+            <div class="datos-personaje">
+                <h2 class="titulo-nombre" id="nombre-personaje"> [Nombre]</h2>
+                <p class="Info-personaje" id="info-personaje">[Raza], [Clase] [Nivel]</p>
+            </div>
         </div>
         <div class="controles-personaje">
-            <label for="selectorNivelPersonaje">Nivel</label>
             <select id="selectorNivelPersonaje" aria-label="Seleccionar nivel del personaje"></select>
-            <button id="btnCambiarPersonaje" type="button">Cambiar personaje</button>
         </div>
         <div class="acciones-personaje">
             <button id="btnVistaBuild" type="button">Build</button>
@@ -1262,32 +1472,32 @@
                 <h2 class="titulo-panel">CARACTERISTICAS</h2>
                 
                 <div class="fila-stats">
-                    <div class="caja-stat">
+                    <div class="caja-stat clickable" data-popup-key="FUE">
                         <p class="titulo-stat">FUE</p>
                         <p class="modificador-stat" id="mod-FUE">+0</p>
                         <p class="valor-stat" id="FUE" >10</p>
                     </div>
-                    <div class="caja-stat">
+                    <div class="caja-stat clickable" data-popup-key="DES">
                         <p class="titulo-stat">DES</p>
                         <p class="modificador-stat" id="mod-DES">+0</p>
                         <p class="valor-stat" id="DES">10</p>
                     </div>
-                    <div class="caja-stat">
+                    <div class="caja-stat clickable" data-popup-key="CON">
                         <p class="titulo-stat">CON</p>
                         <p class="modificador-stat" id="mod-CON">+0</p>
                         <p class="valor-stat" id="CON">10</p>
                     </div>
-                    <div class="caja-stat">
+                    <div class="caja-stat clickable" data-popup-key="INT">
                         <p class="titulo-stat">INT</p>
                         <p class="modificador-stat" id="mod-INT">+0</p>
                         <p class="valor-stat" id="INT">10</p>
                     </div>
-                    <div class="caja-stat">
+                    <div class="caja-stat clickable" data-popup-key="SAB">
                         <p class="titulo-stat">SAB</p>
                         <p class="modificador-stat" id="mod-SAB">+0</p>
                         <p class="valor-stat" id="SAB">10</p>
                     </div>
-                    <div class="caja-stat">
+                    <div class="caja-stat clickable" data-popup-key="CAR">
                         <p class="titulo-stat">CAR</p>
                         <p class="modificador-stat" id="mod-CAR">+0</p>
                         <p class="valor-stat" id="CAR">10</p>
@@ -1313,51 +1523,68 @@
                         <p class="modificador-stat" id="CA">+0</p>
                         <p class="valor-stat" id="armadura">[Armadura]</p>
                     </div>
-                    <div class="caja-extra">
+                    <div class="caja-extra clickable" data-popup-key="Competencia">
                         <p class="titulo-extra">Bonif. Competencia</p>
                         <p class="modificador-stat" id="BC">+2</p>
                     </div>
                 </div>
             </div>
 
-            <div class="panel-vida" id="panel-vida">
+            <details class="panel-vida combate-detalles" id="panel-vida" open>
+                <summary>Seguimiento de Combate</summary>
                 <div class="vida-grid">
-                    <div class="vida-info">
-                        <p class="titulo-panel">Puntos de Golpe</p>
-                        <p id="hpResumen">PG máx / PG actuales</p>
-                        <p class="vida-temporales oculto" id="hpTemporalesTexto">+0 PG temporales</p>
-                        <div class="vida-barra" id="barraVidaContenedor">
-                            <div class="barra-fondo">
-                                <div class="barra-roja" id="barraRoja"></div>
-                                <div class="barra-azul" id="barraAzul"></div>
+                    <div class="vida-contenedor">
+                        <div class="vida-controles">
+                            <input type="number" id="hpInput" min="0" value="1"/>
+
+                            <div class="botones-vida">
+                                <button id="btnCuracion" type="button">Curación</button>
+                                <button id="btnDano" type="button">Daño</button>
+                                <button id="btnTemporales" type="button">PG temporales</button>
                             </div>
                         </div>
                     </div>
-                    <div class="vida-contenedor">
-                        <div class="vida-controles">
-                        <input type="number" id="hpInput" min="0" value="1"/>
-
-                        <div class="botones-vida">
-                            <button id="btnCuracion" type="button">Curación</button>
-                            <button id="btnDano" type="button">Daño</button>
-                            <button id="btnTemporales" type="button">PG temporales</button>
+                    <div class="vida-seguimiento">
+                        <div class="vida-info">
+                            <p id="hpResumen">PG máx / PG actuales</p>
+                            <p class="vida-temporales oculto" id="hpTemporalesTexto">+0 PG temporales</p>
+                            <div class="vida-barra" id="barraVidaContenedor">
+                                <div class="barra-fondo">
+                                    <div class="barra-roja" id="barraRoja"></div>
+                                    <div class="barra-azul" id="barraAzul"></div>
+                                </div>
+                            </div>
                         </div>
-
-                        <label class="chk-inspiracion">
-                            <input type="checkbox" id="chkInspiracion"/>
-                            Inspiración
-                        </label>
+                        <div class="caja-inspiracion">
+                            <p class="titulo-extra">Inspiración</p>
+                            <label class="chk-inspiracion">
+                                <input type="checkbox" id="chkInspiracion"/>
+                                Inspiración
+                            </label>
+                            <label class="chk-concentracion">
+                                <input type="checkbox" id="chkConcentracion"/>
+                                Concentración
+                            </label>
                         </div>
                     </div>
                 </div>
-            </div>
+                <div class="estado-panel">
+                    <label for="selectEstado">Estados</label>
+                    <div class="estado-agregar">
+                        <select id="selectEstado">
+                            <option value="">Agregar estado...</option>
+                        </select>
+                        <button id="btnAgregarEstado" type="button">Agregar</button>
+                    </div>
+                    <div class="estado-tags" id="estadoTags" aria-live="polite"></div>
+                </div>
+            </details>
         </div>
         <div class="columna-derecha">
             <div class="fila-ventanas" style="z-index: 0;">
                 <button id="competenciasBtn" type="button">Competencias</button>
                 <button id="rasgosBtn" type="button">Rasgos</button>
-                <button id="hechizosBtn" type="button">Hechizos</button>
-                <button id="equipoBtn" type="button">Equipo</button>
+                <button id="hechizosBtn" type="button">Conjuros</button>                <button id="equipoBtn" type="button">Equipo</button>
 
             </div>
             <div class="panel-ventanas" style="z-index: 1;"></div>
@@ -1384,6 +1611,12 @@
         <div class="popup-contenido">
             <button class="popup-cerrar" onclick="cerrarPopupRasgo()">×</button>
             <div id="popup-rasgo-contenido"></div>
+        </div>
+    </div>
+    <div id="popup-estado" class="popup oculto">
+        <div class="popup-contenido">
+            <button class="popup-cerrar" onclick="cerrarPopupEstado()" aria-label="Cerrar estado">×</button>
+            <div id="popup-estado-contenido"></div>
         </div>
     </div>
     <script src="datos.js"></script>
