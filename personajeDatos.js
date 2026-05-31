@@ -23,6 +23,8 @@ window.personajeDemo = {
   hpActual: 0,
   hpTemporales: 0,
   inspiracion: false,
+  concentracion: false,
+  estadosActivos: [],
   eleccionesRasgos: {},
   progresionNiveles: {},
   pgPorNivel: {}

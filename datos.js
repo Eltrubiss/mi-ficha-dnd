@@ -446,6 +446,78 @@ let libroDeReglasBasicas = {
   dotes: [
     {    }
   ],
+  estados: [
+    {
+      id: "agarrado",
+      nombre: "Agarrado",
+      descripcion: `La velocidad de una criatura agarrada pasa a ser 0 y no puede beneficiarse de bonificadores a su velocidad. El estado termina si quien agarra queda incapacitado o si un efecto aleja a la criatura agarrada del alcance de quien la agarra.`
+    },
+    {
+      id: "apresado",
+      nombre: "Apresado",
+      descripcion: `La velocidad de una criatura apresada pasa a ser 0. Las tiradas de ataque contra ella tienen ventaja y sus propias tiradas de ataque tienen desventaja. Además, tiene desventaja en las tiradas de salvación de Destreza.`
+    },
+    {
+      id: "aturdido",
+      nombre: "Aturdido",
+      descripcion: `Una criatura aturdida está incapacitada, no puede moverse y solo puede hablar vacilantemente. Falla automáticamente las tiradas de salvación de Fuerza y Destreza, y las tiradas de ataque contra ella tienen ventaja.`
+    },
+    {
+      id: "asustado",
+      nombre: "Asustado",
+      descripcion: `Una criatura asustada tiene desventaja en pruebas de característica y tiradas de ataque mientras la fuente de su miedo esté en su línea de visión. No puede acercarse voluntariamente a la fuente de su miedo.`
+    },
+    {
+      id: "cegado",
+      nombre: "Cegado",
+      descripcion: `Una criatura cegada no puede ver y falla automáticamente cualquier prueba de característica que requiera la vista. Las tiradas de ataque contra ella tienen ventaja y sus propias tiradas de ataque tienen desventaja.`
+    },
+    {
+      id: "derribado",
+      nombre: "Derribado",
+      descripcion: `Una criatura derribada solo puede moverse gateando, salvo que se levante. Tiene desventaja en las tiradas de ataque. Las tiradas de ataque contra ella tienen ventaja si el atacante está a 5 pies o menos; si no, tienen desventaja.`
+    },
+    {
+      id: "ensordecido",
+      nombre: "Ensordecido",
+      descripcion: `Una criatura ensordecida no puede oír y falla automáticamente cualquier prueba de característica que requiera el oído.`
+    },
+    {
+      id: "envenenado",
+      nombre: "Envenenado",
+      descripcion: `Una criatura envenenada tiene desventaja en las tiradas de ataque y en las pruebas de característica.`
+    },
+    {
+      id: "hechizado",
+      nombre: "Hechizado",
+      descripcion: `Una criatura hechizada no puede atacar a quien la hechizó ni elegirlo como objetivo de aptitudes o efectos mágicos dañinos. Quien hechiza tiene ventaja en pruebas de característica para interactuar socialmente con ella.`
+    },
+    {
+      id: "incapacitado",
+      nombre: "Incapacitado",
+      descripcion: `Una criatura incapacitada no puede realizar acciones ni reacciones.`
+    },
+    {
+      id: "inconsciente",
+      nombre: "Inconsciente",
+      descripcion: `Una criatura inconsciente está incapacitada, no puede moverse ni hablar, no es consciente de su entorno, suelta lo que sostenga y cae derribada. Falla automáticamente salvaciones de Fuerza y Destreza; los ataques contra ella tienen ventaja y todo ataque que impacte desde 5 pies o menos es crítico.`
+    },
+    {
+      id: "invisible",
+      nombre: "Invisible",
+      descripcion: `Una criatura invisible es imposible de ver sin ayuda de magia o sentidos especiales. A efectos de esconderse está muy oscurecida. Sus tiradas de ataque tienen ventaja y las tiradas de ataque contra ella tienen desventaja.`
+    },
+    {
+      id: "paralizado",
+      nombre: "Paralizado",
+      descripcion: `Una criatura paralizada está incapacitada y no puede moverse ni hablar. Falla automáticamente salvaciones de Fuerza y Destreza. Los ataques contra ella tienen ventaja y todo ataque que impacte desde 5 pies o menos es crítico.`
+    },
+    {
+      id: "petrificado",
+      nombre: "Petrificado",
+      descripcion: `Una criatura petrificada se transforma, junto con cualquier objeto no mágico que vista o porte, en una sustancia sólida inanimada. Está incapacitada, no puede moverse ni hablar, no es consciente, tiene resistencia a todo daño y es inmune al veneno y la enfermedad.`
+    }
+  ]
   
 };
 

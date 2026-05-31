@@ -31,6 +31,8 @@ const personajePorDefecto = {
   hpActual: 0,
   hpTemporales: 0,
   inspiracion: false,
+  concentracion: false,
+  estadosActivos: [],
   eleccionesRasgos: {},
   progresionNiveles: {},
   pgPorNivel: {}
@@ -133,6 +135,11 @@ function obtenerIdsPersonajesGuardados() {
   return ids;
 }
 
+function normalizarListaEstados(estados) {
+  if (!Array.isArray(estados)) return [];
+  return [...new Set(estados.map(estadoId => String(estadoId || "").trim()).filter(Boolean))];
+}
+
 function normalizarPersonaje(personaje) {
   const datos = clonarPersonaje(personaje || {});
   if (Object.prototype.hasOwnProperty.call(datos, "Inspiracion")
@@ -144,6 +151,8 @@ function normalizarPersonaje(personaje) {
   return {
     ...clonarPersonaje(personajePorDefecto),
     ...datos,
+    concentracion: Boolean(datos.concentracion),
+    estadosActivos: normalizarListaEstados(datos.estadosActivos),
     eleccionesRasgos: { ...(datos.eleccionesRasgos || {}) },
     progresionNiveles: { ...(datos.progresionNiveles || {}) },
     pgPorNivel: { ...(datos.pgPorNivel || {}) }
@@ -219,6 +228,8 @@ function normalizarPersonajeGuardado(datos) {
   const datosNormalizados = {
     ...clonarDatosPersonaje(personajePorDefecto),
     ...datosCompatibles,
+    concentracion: Boolean(datosCompatibles.concentracion),
+    estadosActivos: normalizarListaEstados(datosCompatibles.estadosActivos),
     eleccionesRasgos: {
       ...clonarDatosPersonaje(personajePorDefecto.eleccionesRasgos),
       ...clonarDatosPersonaje(datosCompatibles.eleccionesRasgos)
@@ -542,7 +553,7 @@ function calcularPuntosGolpeMaximos() {
   if (claseNivel1) {
     const valorNivel1 = Math.max(1, claseNivel1.dadoDeGolpe + modCON);
     total += valorNivel1;
-    items.push({ origen: `${claseNivel1.nombre} nivel 1`, valor: valorNivel1, descripcion: `${claseNivel1.dadoDeGolpe} dado máximo + ${modCON} CON` });
+    items.push({ origen: `${claseNivel1.nombre} nivel de clase 1`, valor: valorNivel1, descripcion: `${claseNivel1.dadoDeGolpe} PG de dado máximo + ${modCON} CON` });
   }
 
   for (let nivel = 2; nivel <= 20; nivel++) {
@@ -553,7 +564,7 @@ function calcularPuntosGolpeMaximos() {
     const tirada = obtenerValorPGNivel(nivel, claseId);
     const valorNivel = Math.max(1, tirada + modCON);
     total += valorNivel;
-    items.push({ origen: `Nivel ${nivel} (${clase.nombre})`, valor: valorNivel, descripcion: `${tirada} PG de dado + ${modCON} CON` });
+    items.push({ origen: `${clase.nombre} nivel de clase ${contarNivelClaseHastaNivelPersonaje(claseId, nivel)} (personaje nivel ${nivel})`, valor: valorNivel, descripcion: `${tirada} PG de dado + ${modCON} CON` });
   }
 
   return { total, items };
@@ -580,10 +591,17 @@ sincronizarNivelPersonajeDesdeClases();
 let personajeConBonos = { ...personajeActual };
 
 const detalleEstadisticas = {
+  FUE: { total: 0, items: [] },
+  DES: { total: 0, items: [] },
+  CON: { total: 0, items: [] },
+  INT: { total: 0, items: [] },
+  SAB: { total: 0, items: [] },
+  CAR: { total: 0, items: [] },
   PG: { total: 0, items: [] },
   Velocidad: { total: 0, items: [] },
   Iniciativa: { total: 0, items: [] },
-  CA: { total: 0, items: [] }
+  CA: { total: 0, items: [] },
+  Competencia: { total: 0, items: []}
 };
 
 let claseElegida = libroDeReglasBasicas.clases.find(c => c.id === personajeActual.clase1);
@@ -632,10 +650,79 @@ function obtenerBonoRacialStat(statId) {
     + obtenerBonoStatDesdeRasgos(subrazaElegida?.rasgos, statId);
 }
 
+function obtenerTiposEfectoCompatibles(tipoDeEfecto) {
+  const equivalencias = {
+    velocidad: ["velocidad", "bono_velocidad"],
+    bonoCA: ["bonoCA", "bonifCA"],
+    iniciativa: ["iniciativa"],
+    bono_stat: ["bono_stat"]
+  };
+  return equivalencias[tipoDeEfecto] || [tipoDeEfecto];
+}
+
+function obtenerRasgosConOrigenParaDetalles() {
+  return [
+    ...(razaElegida?.rasgos || []).map(rasgo => ({ ...rasgo, origen: razaElegida.nombre })),
+    ...(subrazaElegida?.rasgos || []).map(rasgo => ({ ...rasgo, origen: subrazaElegida.nombre })),
+    ...obtenerRasgosDeClasesDisponibles(),
+    ...obtenerOpcionesSeleccionadasDisponibles()
+  ];
+}
+
+function obtenerValorEfecto(efecto) {
+  return efecto?.valor || efecto?.valorDelBono || 0;
+}
+
+function obtenerDetallesEfectos(tipoDeEfecto, propiedadFiltro = null, valorFiltro = null) {
+  const tiposCompatibles = obtenerTiposEfectoCompatibles(tipoDeEfecto);
+  return obtenerRasgosConOrigenParaDetalles().flatMap(rasgo => (rasgo.efectos || [])
+    .filter(efecto => tiposCompatibles.includes(efecto.tipoDeEfecto))
+    .filter(efecto => !propiedadFiltro || efecto[propiedadFiltro] === valorFiltro)
+    .filter(efecto => seCumpleCondicion(efecto.condicion, estado))
+    .map(efecto => ({
+      origen: `${rasgo.nombre} de ${rasgo.origen || "rasgos"}`,
+      valor: obtenerValorEfecto(efecto),
+      descripcion: efecto.descripcion || `Efecto ${efecto.tipoDeEfecto}`
+    })));
+}
+
+function sumarDetallesEfectos(detalles) {
+  return detalles.reduce((total, item) => total + (Number(item.valor) || 0), 0);
+}
+
+function actualizarDetalleCaracteristicas() {
+  ESTADISTICAS_PRINCIPALES.forEach(({ id, nombre }) => {
+    const base = Number(personajeActual[id]) || 0;
+    const detallesBonos = obtenerDetallesEfectos("bono_stat", "statAfectada", id);
+    const total = base + sumarDetallesEfectos(detallesBonos);
+    detalleEstadisticas[id] = {
+      total,
+      items: [
+        { origen: `${nombre} base del personaje`, valor: base, descripcion: "Valor asignado en la ficha" },
+        ...detallesBonos
+      ]
+    };
+  });
+}
+
+function actualizarDetalleCompetencia() {
+  const nivelTotal = personajeActual.nivel || 1;
+  const total = calcularBonificadorCompetencia(nivelTotal);
+  detalleEstadisticas.Competencia = {
+    total,
+    items: [{
+      origen: `Nivel total ${nivelTotal}`,
+      valor: total,
+      descripcion: "Bonificador de competencia según el nivel total del personaje"
+    }]
+  };
+}
+
 function calcularPersonajeConBonos() {
   const personajeCalculado = { ...personajeActual };
   ESTADISTICAS_PRINCIPALES.forEach(({ id }) => {
-    personajeCalculado[id] = (Number(personajeActual[id]) || 0) + obtenerBonoRacialStat(id);
+    personajeCalculado[id] = (Number(personajeActual[id]) || 0)
+      + sumarDetallesEfectos(obtenerDetallesEfectos("bono_stat", "statAfectada", id));
   });
   return personajeCalculado;
 }
@@ -657,6 +744,7 @@ function actualizarVariablesModificadores() {
 }
 
 function actualizarValoresEstadisticasEnFicha() {
+  actualizarDetalleCaracteristicas();
   ESTADISTICAS_PRINCIPALES.forEach(({ id }) => {
     const valorElemento = document.getElementById(id);
     const modificadorElemento = document.getElementById(`mod-${id}`);
@@ -704,22 +792,14 @@ function actualizarResumenEstadisticasBuild() {
 }
 
 function actualizarIniciativa() {
-  const bonoIniciativaActual = sumaDeEfectos("iniciativa", efectos, estado);
-  const iniciativaActual = modDES + bonoIniciativaActual;
+  const detallesIniciativa = obtenerDetallesEfectos("iniciativa");
+  const iniciativaActual = modDES + sumarDetallesEfectos(detallesIniciativa);
   detalleEstadisticas.Iniciativa.total = iniciativaActual;
   detalleEstadisticas.Iniciativa.items = [{
-    origen: "Modificador de Destreza",
+    origen: "Modificador de Destreza del personaje",
     valor: modDES,
-    descripcion: "Destreza final"
-  }];
-
-  if (bonoIniciativaActual) {
-    detalleEstadisticas.Iniciativa.items.push({
-      origen: "Bonos de iniciativa",
-      valor: bonoIniciativaActual,
-      descripcion: "Rasgos que añaden iniciativa"
-    });
-  }
+    descripcion: "Modificador de la Destreza final"
+  }, ...detallesIniciativa];
 
   const iniciativaElemento = document.getElementById("Ini");
   if (iniciativaElemento) iniciativaElemento.innerText = formatoValor(iniciativaActual);
@@ -746,8 +826,8 @@ refrescarEstadisticasPersonaje();
 ///////////////////////////////////////////////////////////////////
 document.getElementById("nombre-personaje").innerText = personajeActual.nombre;
 document.getElementById("info-personaje").innerText = personajeActual.raza + ", " + personajeActual.clase1 + " " + personajeActual.nivel;
-document.getElementById("BC").innerText = "+" + bonifCompetencia;
-
+actualizarDetalleCompetencia();
+document.getElementById("BC").innerText = formatoValor(bonifCompetencia);
 ////////////////////// || RASGOS || ///////////////////////////////////
 function seCumpleCondicion(condicion, estado) {
   if (!condicion) return true;
@@ -778,12 +858,15 @@ function obtenerRasgosDeClasesDisponibles() {
 }
 
 function sumaEfectosDeRasgos(rasgos, tipoDeEfecto, propiedadFiltro = null, valorFiltro = null) {
+  const tiposCompatibles = obtenerTiposEfectoCompatibles(tipoDeEfecto);
   let total = 0;
 
   rasgos.forEach(rasgo => {
     (rasgo.efectos || []).forEach(efecto => {
-      if (efecto.tipoDeEfecto === tipoDeEfecto && (!propiedadFiltro || efecto[propiedadFiltro] === valorFiltro)) {
-        total += efecto.valor || efecto.valorDelBono || 0;
+      if (tiposCompatibles.includes(efecto.tipoDeEfecto)
+          && (!propiedadFiltro || efecto[propiedadFiltro] === valorFiltro)
+          && seCumpleCondicion(efecto.condicion, estado)) {
+        total += obtenerValorEfecto(efecto);
       }
     });
   });
@@ -804,9 +887,9 @@ let total = 0;
         razaElegida.rasgos.forEach(rasgo => {
             if (rasgo.efectos) {
                 rasgo.efectos.forEach(efecto => {
-                    if (efecto.tipoDeEfecto === tipoDeEfecto) {
+                    if (obtenerTiposEfectoCompatibles(tipoDeEfecto).includes(efecto.tipoDeEfecto) && seCumpleCondicion(efecto.condicion, estado)) {
                         if (!propiedadFiltro || efecto[propiedadFiltro] === valorFiltro) {
-                            total += efecto.valor || efecto.valorDelBono || 0;
+                            total += obtenerValorEfecto(efecto);
                         }
                     }
                 });
@@ -820,12 +903,12 @@ let total = 0;
             if (rasgo.efectos) {
                 rasgo.efectos.forEach(efecto => {
                   console.log(`COMPARANDO: El sistema busca [${tipoDeEfecto}] y el rasgo tiene [${efecto.tipoDeEfecto}]`);
-                    if (efecto.tipoDeEfecto === tipoDeEfecto) {
+                    if (obtenerTiposEfectoCompatibles(tipoDeEfecto).includes(efecto.tipoDeEfecto) && seCumpleCondicion(efecto.condicion, estado)) {
                       console.log("5. Encontré un efecto del tipo que busco en la subraza:", efecto);
                         // Filtramos si requiere alguna propiedad específica (como la stat afectada)
                         if (!propiedadFiltro || efecto[propiedadFiltro] === valorFiltro) {
                             // Sumamos el valor del bono (soportando ambas nomenclaturas que usas)
-                            total += efecto.valor || efecto.valorDelBono || 0;
+                            total += obtenerValorEfecto(efecto);
                             console.log(`6. Sumando bono de subraza ${subrazaElegida.nombre}:`, efecto.valor || efecto.valorDelBono || 0, "Total actual:", total);
                         }
                     }
@@ -840,39 +923,12 @@ let total = 0;
     return total;
 }
 function buscarEfecto(tipoDeEfecto) {
-    let efectoEncontrado = null;
-
-    // --- 1. BUSCAR EN RAZA ---
-    if (razaElegida && razaElegida.rasgos) {
-        razaElegida.rasgos.forEach(rasgo => {
-            if (rasgo.efectos) {
-                let ef = rasgo.efectos.find(e => e.tipoDeEfecto === tipoDeEfecto);
-                if (ef) efectoEncontrado = ef;
-            }
-        });
-    }
-    if (efectoEncontrado) return efectoEncontrado;
-
-    // --- BUSCAR EN SUBRAZA ---
-    if (subrazaElegida && subrazaElegida.rasgos) {
-        subrazaElegida.rasgos.forEach(rasgo => {
-            if (rasgo.efectos) {
-                let ef = rasgo.efectos.find(e => e.tipoDeEfecto === tipoDeEfecto);
-                if (ef) efectoEncontrado = ef;
-            }
-        });
-    }
-    if (efectoEncontrado) return efectoEncontrado;
-
-    // --- 3. BUSCAR EN CLASES ACTIVAS Y OPCIONES SELECCIONADAS ---
-    [...obtenerRasgosDeClasesDisponibles(), ...obtenerOpcionesSeleccionadasDisponibles()].forEach(rasgo => {
-        if (rasgo.efectos) {
-            let ef = rasgo.efectos.find(e => e.tipoDeEfecto === tipoDeEfecto);
-            if (ef) efectoEncontrado = { ...ef, nombre: rasgo.nombre, origen: rasgo.origen };
-        }
-    });
-
-    return efectoEncontrado;
+  const tiposCompatibles = obtenerTiposEfectoCompatibles(tipoDeEfecto);
+  for (const rasgo of obtenerRasgosConOrigenParaDetalles()) {
+    const efecto = (rasgo.efectos || []).find(ef => tiposCompatibles.includes(ef.tipoDeEfecto));
+    if (efecto) return { ...efecto, nombre: rasgo.nombre, origen: rasgo.origen };
+  }
+  return null;
 }
 
 
@@ -886,20 +942,13 @@ const iniciativaTotal = modDES + bonoIniciativa;
 ///////////////////// CÁLCULO DE PUNTOS DE GOLPE /////////////////////
 actualizarPuntosGolpe();
 ///////////////////// CÁLCULO DE INICIATIVA /////////////////////
+const detallesIniciativaInicial = obtenerDetallesEfectos("iniciativa");
 detalleEstadisticas.Iniciativa.total = iniciativaTotal;
-detalleEstadisticas.Iniciativa.items.push({
-  origen: "Modificador de Destreza",
+detalleEstadisticas.Iniciativa.items = [{
+  origen: "Modificador de Destreza del personaje",
   valor: modDES,
-  descripcion: "Destreza final"
-});
-
-if (bonoIniciativa) {
-  detalleEstadisticas.Iniciativa.items.push({
-    origen: "Bonos de iniciativa",
-    valor: bonoIniciativa,
-    descripcion: "Rasgos que añaden iniciativa"
-  });
-}
+  descripcion: "Modificador de la Destreza final"
+}, ...detallesIniciativaInicial];
 
 if (iniciativaTotal >= 0) {
     document.getElementById("Ini").innerText = "+" + iniciativaTotal;
@@ -915,10 +964,31 @@ function formatoValor(valor) {
   return valor >= 0 ? "+" + valor : String(valor);
 }
 
+function obtenerClaveDetalleEstadistica(clave) {
+  const equivalencias = { Vel: "Velocidad", Ini: "Iniciativa", BC: "Competencia" };
+  return equivalencias[clave] || clave;
+}
+
+function obtenerTituloDetalleEstadistica(clave) {
+  const titulos = {
+    FUE: "Fuerza",
+    DES: "Destreza",
+    CON: "Constitución",
+    INT: "Inteligencia",
+    SAB: "Sabiduría",
+    CAR: "Carisma",
+    PG: "Puntos de Golpe",
+    CA: "Clase de Armadura",
+    Competencia: "Bonificador de Competencia"
+  };
+  return titulos[clave] || clave;
+}
+
 function renderPopupEstadisticas(detalle, clave) {
   const contenido = document.getElementById("popupContenido");
-  const entradas = clave && Object.prototype.hasOwnProperty.call(detalle, clave)
-    ? [[clave, detalle[clave]]]
+  const claveDetalle = obtenerClaveDetalleEstadistica(clave);
+  const entradas = claveDetalle && Object.prototype.hasOwnProperty.call(detalle, claveDetalle)
+    ? [[claveDetalle, detalle[claveDetalle]]]
     : Object.entries(detalle);
 
   contenido.innerHTML = entradas
@@ -934,7 +1004,7 @@ function renderPopupEstadisticas(detalle, clave) {
 
       return `
         <section class="popup-seccion">
-          <h3>${titulo} — Total ${formatoValor(data.total)}</h3>
+          <h3>${obtenerTituloDetalleEstadistica(titulo)} — Total ${formatoValor(data.total)}</h3>
           ${itemsHtml}
         </section>
       `;
@@ -953,25 +1023,22 @@ function cerrarPopupEstadisticas() {
 /////////////////////////////////////////////////////////////////
 
 ///////////////////// CÁLCULO DE VELOCIDAD /////////////////////
-if (razaElegida) {
-  let velocidadBase = razaElegida.velocidad;
-  let velocidadTotal = velocidadBase + bonoVelocidad;
+function actualizarVelocidad() {
+  if (!razaElegida) return;
+  const velocidadBase = razaElegida.velocidad || 0;
+  const detallesVelocidad = obtenerDetallesEfectos("velocidad");
+  const velocidadTotal = velocidadBase + sumarDetallesEfectos(detallesVelocidad);
 
   detalleEstadisticas.Velocidad.total = velocidadTotal;
-  detalleEstadisticas.Velocidad.items.push(
-    { origen: "Velocidad base", valor: velocidadBase, descripcion: "Velocidad de la raza" }
-  );
-
-  if (bonoVelocidad) {
-    detalleEstadisticas.Velocidad.items.push({
-      origen: "Bonos de velocidad",
-      valor: bonoVelocidad,
-      descripcion: "Rasgos u objetos"
-    });
-  }
+  detalleEstadisticas.Velocidad.items = [
+    { origen: `Velocidad de ${razaElegida.nombre}`, valor: velocidadBase, descripcion: "Velocidad base de la raza" },
+    ...detallesVelocidad
+  ];
 
   document.getElementById("Vel").innerText = velocidadTotal;
 }
+
+actualizarVelocidad();
 
 ////////////////////// RENDERIZADO DE PUNTOS DE GOLPE /////////////////////
 function renderVida() {
@@ -1001,21 +1068,119 @@ function renderVida() {
 
   document.getElementById("chkInspiracion").checked =
     Boolean(personajeActual.inspiracion);
-}
+  document.getElementById("chkConcentracion").checked =
+    Boolean(personajeActual.concentracion);
+ }
 function guardarEstadoVida() {
   const estado = {
     hpActual: personajeActual.hpActual,
     hpTemporales: personajeActual.hpTemporales,
-    inspiracion: personajeActual.inspiracion
+    inspiracion: personajeActual.inspiracion,
+    concentracion: personajeActual.concentracion,
+    estadosActivos: personajeActual.estadosActivos
   };
   escribirJsonLocalStorage("creadorDndPersonaje", estado);
   marcarPersonajeModificado();
 }
+
+function escaparHtml(valor) {
+  return String(valor ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function obtenerEstadosLibroReglas() {
+  return Array.isArray(libroDeReglasBasicas.estados) ? libroDeReglasBasicas.estados : [];
+}
+
+function obtenerEstadoPorId(estadoId) {
+  return obtenerEstadosLibroReglas().find(estadoRegla => estadoRegla.id === estadoId);
+}
+
+function renderSelectorEstados() {
+  const selector = document.getElementById("selectEstado");
+  if (!selector) return;
+
+  const estadosActivos = new Set(personajeActual.estadosActivos || []);
+  const opciones = obtenerEstadosLibroReglas()
+    .filter(estadoRegla => !estadosActivos.has(estadoRegla.id))
+    .map(estadoRegla => `<option value="${escaparHtml(estadoRegla.id)}">${escaparHtml(estadoRegla.nombre)}</option>`)
+    .join("");
+
+  selector.innerHTML = `<option value="">Agregar estado...</option>${opciones}`;
+}
+
+function renderEstadosActivos() {
+  const contenedor = document.getElementById("estadoTags");
+  if (!contenedor) return;
+
+  const estadosActivos = normalizarListaEstados(personajeActual.estadosActivos);
+  personajeActual.estadosActivos = estadosActivos;
+
+  if (!estadosActivos.length) {
+    contenedor.innerHTML = '<p class="estado-tags-vacio">Sin estados activos.</p>';
+    renderSelectorEstados();
+    return;
+  }
+
+  contenedor.innerHTML = estadosActivos
+    .map(estadoId => obtenerEstadoPorId(estadoId))
+    .filter(Boolean)
+    .map(estadoRegla => `
+      <span class="estado-tag">
+        <button class="estado-tag-quitar" type="button" data-estado-quitar="${escaparHtml(estadoRegla.id)}" aria-label="Quitar ${escaparHtml(estadoRegla.nombre)}">×</button>
+        <button class="estado-tag-nombre" type="button" data-estado-abrir="${escaparHtml(estadoRegla.id)}">${escaparHtml(estadoRegla.nombre)}</button>
+      </span>
+    `)
+    .join("");
+
+  renderSelectorEstados();
+}
+
+function agregarEstadoActivo(estadoId) {
+  if (!obtenerEstadoPorId(estadoId)) return;
+  const estadosActivos = normalizarListaEstados(personajeActual.estadosActivos);
+  if (!estadosActivos.includes(estadoId)) {
+    personajeActual.estadosActivos = [...estadosActivos, estadoId];
+    guardarEstadoVida();
+    renderEstadosActivos();
+  }
+}
+
+function quitarEstadoActivo(estadoId) {
+  const estadosActualizados = normalizarListaEstados(personajeActual.estadosActivos)
+    .filter(estadoActivoId => estadoActivoId !== estadoId);
+  if (estadosActualizados.length !== (personajeActual.estadosActivos || []).length) {
+    personajeActual.estadosActivos = estadosActualizados;
+    guardarEstadoVida();
+    renderEstadosActivos();
+  }
+}
+
+function abrirPopupEstado(estadoId) {
+  const estadoRegla = obtenerEstadoPorId(estadoId);
+  if (!estadoRegla) return;
+
+  const contenido = document.getElementById("popup-estado-contenido");
+  contenido.innerHTML = `
+    <h2>${escaparHtml(estadoRegla.nombre)}</h2>
+    <p>${escaparHtml(estadoRegla.descripcion)}</p>
+  `;
+  document.getElementById("popup-estado").classList.remove("oculto");
+}
+
+function cerrarPopupEstado() {
+  document.getElementById("popup-estado").classList.add("oculto");
+}
 function aplicarCuracion(valor) {
+  const hpAnterior = personajeActual.hpActual;
   const hpMax = detalleEstadisticas.PG.total;
   personajeActual.hpActual = Math.min(
     hpMax,
-    personajeActual.hpActual + valor
+    personajeActual.hpActual + Math.max(0, valor)
   );
   if (personajeActual.hpActual !== hpAnterior) guardarEstadoVida();
   renderVida();
@@ -1049,14 +1214,14 @@ function aplicarTemporales(valor) {
   renderVida();
 }
 
-function aplicarTemporales(valor) {
-  personajeActual.hpTemporales = Math.max(0, valor);
+function alternarInspiracion() {
+  personajeActual.inspiracion = !personajeActual.inspiracion;
   guardarEstadoVida();
   renderVida();
 }
 
-function alternarInspiracion() {
-  personajeActual.inspiracion = !personajeActual.inspiracion;
+function alternarConcentracion() {
+  personajeActual.concentracion = !personajeActual.concentracion;
   guardarEstadoVida();
   renderVida();
 }
@@ -1081,7 +1246,30 @@ document.getElementById("btnTemporales")
 document.getElementById("chkInspiracion")
   .addEventListener("change", alternarInspiracion);
 
+document.getElementById("chkConcentracion")
+  .addEventListener("change", alternarConcentracion);
+
+document.getElementById("btnAgregarEstado")
+  .addEventListener("click", () => {
+    const selector = document.getElementById("selectEstado");
+    agregarEstadoActivo(selector.value);
+    selector.value = "";
+  });
+
+document.getElementById("estadoTags")
+  .addEventListener("click", evento => {
+    const botonQuitar = evento.target.closest("[data-estado-quitar]");
+    if (botonQuitar) {
+      quitarEstadoActivo(botonQuitar.dataset.estadoQuitar);
+      return;
+    }
+
+    const botonAbrir = evento.target.closest("[data-estado-abrir]");
+    if (botonAbrir) abrirPopupEstado(botonAbrir.dataset.estadoAbrir);
+  });
+
 renderVida();
+renderEstadosActivos();
 ///////////////////// ARMADURAS /////////////////////
 const { caTotal, textoArmadura, detalle } = calcularCA(
   personajeConBonos,
@@ -1159,7 +1347,7 @@ function calcularCA(personaje, armaduraElegida, claseElegida, razaElegida, equip
       caTotal = calcularCADesdeEfecto(personaje, efectoCa);
       textoArmadura = efectoCa.nombre || "Defensa sin Armadura";
       detalle.push({
-        origen: efectoCa.nombre + " de " + (claseElegida?.nombre || razaElegida?.nombre)  || "Defensa sin Armadura",
+        origen: `${efectoCa.nombre || "Defensa sin Armadura"} de ${efectoCa.origen || claseElegida?.nombre || razaElegida?.nombre || "rasgos"}`,
         valor: caTotal,
         descripcion: efectoCa.base + " + " + (efectoCa.modificadores || []).join(" + ")
       });
@@ -1173,14 +1361,11 @@ function calcularCA(personaje, armaduraElegida, claseElegida, razaElegida, equip
     }
   }
 
-  const bonoCARaza = sumaDeEfectos("bonoCA", [claseElegida, razaElegida], estado);
-  if (bonoCARaza) {
-    caTotal += bonoCARaza;
-    detalle.push({
-      origen: "Bonos de CA de rasgos",
-      valor: bonoCARaza,
-      descripcion: "Rasgos que añaden CA"
-    });
+  const detallesBonoCA = obtenerDetallesEfectos("bonoCA");
+  const bonoCARasgos = sumarDetallesEfectos(detallesBonoCA);
+  if (bonoCARasgos) {
+    caTotal += bonoCARasgos;
+    detalle.push(...detallesBonoCA);
   }
 
   const bonoCAEquip = equipo
@@ -1203,14 +1388,7 @@ function calcularCA(personaje, armaduraElegida, claseElegida, razaElegida, equip
   return { caTotal, textoArmadura, detalle };
 }
 
-["PG", "Vel", "Ini", "CA"].forEach(id => {
-  const element = document.getElementById(id);
-  if (element && element.parentElement) {
-    element.parentElement.addEventListener("click", () => abrirPopupEstadisticas(id));
-  }
-});
-
-document.querySelectorAll(".caja-stat.clickable").forEach(box => {
+document.querySelectorAll("[data-popup-key]").forEach(box => {
   const popupKey = box.dataset.popupKey;
   if (popupKey) {
     box.addEventListener("click", () => abrirPopupEstadisticas(popupKey));
@@ -1560,7 +1738,53 @@ let listaSeleccionesBuildActuales = [];
 function renderRasgos() {
     listaRasgosActuales = [];
     let contadorId = 0;
-    
+
+    const limpiarResumenFicha = rasgo => resumenRasgo(rasgo).replace(/<br>|###|\*\*/g, "");
+
+    const renderTarjetaRasgoFicha = (rasgo, origen, tituloExtra = "", claseExtra = "") => {
+        const indice = contadorId;
+        const usarFormatoBuild = claseExtra.includes("rasgo-seleccionado-ficha");
+        const claseTarjeta = usarFormatoBuild ? "build-rasgo-card" : "rasgo-tarjeta-boton";
+        const claseTitulo = usarFormatoBuild ? "build-rasgo-card-titulo" : "rasgo-tarjeta-titulo";
+        const claseResumen = usarFormatoBuild ? "build-rasgo-card-resumen" : "rasgo-tarjeta-resumen";
+        listaRasgosActuales.push({ ...rasgo, origen });
+        contadorId++;
+
+        return `
+            <div class="${claseExtra}">
+                <div class="${claseTarjeta}" onclick="abrirPopupRasgo(${indice})">
+                    <div class="${claseTitulo}">
+                        ${textoSeguro(rasgo.nombre)} ${tituloExtra}
+                    </div>
+                    <div class="${claseResumen}">${textoSeguro(limpiarResumenFicha(rasgo))}</div>
+                </div>
+            </div>
+        `;
+    };
+
+    const opcionElegidaEsRasgo = opcion => Boolean(
+        opcion
+        && (
+            opcion.descripcion
+            || opcion.descripcionResum
+            || Array.isArray(opcion.efectos)
+            || Array.isArray(opcion.selecciones)
+        )
+    );
+
+    const renderRasgosElegidosPorSeleccion = (rasgo, contexto, origen) => {
+        const opcionesElegidas = obtenerOpcionesSeleccionadasDeRasgo(rasgo, contexto, origen)
+            .filter(opcionElegidaEsRasgo);
+
+        return opcionesElegidas
+            .map(opcion => renderTarjetaRasgoFicha(
+                opcion,
+                `${origen} — ${rasgo.nombre}`,
+                "",
+                "rasgo-seleccionado-ficha"
+            ))
+            .join("");
+    };
     let html = `
         <h2 class="titulo-panel">Rasgos y Atributos</h2>
         <div class="rasgos-contenedor-scroll" style="max-height: 75vh; overflow-y: auto; padding-right: 5px;">
@@ -1570,51 +1794,29 @@ function renderRasgos() {
     // 1. SECCIÓN DE RAZA (Desplegable Principal)
     // ==========================================
     if (razaElegida) {
-        // La propiedad 'open' hace que arranque abierto por defecto. Si lo quitas, arrancará cerrado.
         html += `<details open class="desplegable-seccion">
-                    <summary class="desplegable-titulo">Raza: ${razaElegida.nombre}</summary>
-                    <div class="desplegable-contenido">`;
+                    <summary class="desplegable-titulo">Raza: ${textoSeguro(razaElegida.nombre)}</summary>                    <div class="desplegable-contenido">`;
         
-        // Rasgos base de la Raza
         if (razaElegida.rasgos && razaElegida.rasgos.length > 0) {
             razaElegida.rasgos.forEach(rasgo => {
-                listaRasgosActuales.push({ ...rasgo, origen: razaElegida.nombre });
-                let resumen = rasgo.descripcionResum || (rasgo.descripcion ? rasgo.descripcion.substring(0, 60) + "..." : "Sin descripción.");
-                resumen = resumen.replace(/<br>|###|\*\*/g, ""); 
-
-                html += `
-                    <div class="rasgo-tarjeta-boton" onclick="abrirPopupRasgo(${contadorId})">
-                        <div class="rasgo-tarjeta-titulo">${rasgo.nombre}</div>
-                        <div class="rasgo-tarjeta-resumen">${resumen}</div>
-                    </div>
-                `;
-                contadorId++;
+                html += renderTarjetaRasgoFicha(rasgo, razaElegida.nombre);
+                html += renderRasgosElegidosPorSeleccion(rasgo, "raza", razaElegida.nombre);
             });
         }
 
-        // --- SUBRAZA (Desplegable Secundario anidado) ---
         if (subrazaElegida && subrazaElegida.rasgos && subrazaElegida.rasgos.length > 0) {
             html += `<details open class="desplegable-subseccion">
-                        <summary class="desplegable-subtitulo">Subraza: ${subrazaElegida.nombre}</summary>
+                        <summary class="desplegable-subtitulo">Subraza: ${textoSeguro(subrazaElegida.nombre)}</summary>
                         <div class="desplegable-contenido">`;
             
             subrazaElegida.rasgos.forEach(rasgo => {
-                listaRasgosActuales.push({ ...rasgo, origen: subrazaElegida.nombre });
-                let resumen = rasgo.descripcionResum || (rasgo.descripcion ? rasgo.descripcion.substring(0, 60) + "..." : "Sin descripción.");
-                resumen = resumen.replace(/<br>|###|\*\*/g, ""); 
-
-                html += `
-                    <div class="rasgo-tarjeta-boton" onclick="abrirPopupRasgo(${contadorId})">
-                        <div class="rasgo-tarjeta-titulo">${rasgo.nombre}</div>
-                        <div class="rasgo-tarjeta-resumen">${resumen}</div>
-                    </div>
-                `;
-                contadorId++;
+                html += renderTarjetaRasgoFicha(rasgo, subrazaElegida.nombre);
+                html += renderRasgosElegidosPorSeleccion(rasgo, "subraza", subrazaElegida.nombre);
             });
-            html += `</div></details>`; // Cierra Subraza
+            html += `</div></details>`;
         }
         
-        html += `</div></details>`; // Cierra Raza
+        html += `</div></details>`;
     }
 
     // ==========================================
@@ -1622,55 +1824,33 @@ function renderRasgos() {
     // ==========================================
     clasesActivas.filter(slot => slot.clase && slot.nivel > 0).forEach(slot => {
         html += `<details open class="desplegable-seccion" style="margin-top: 15px;">
-                    <summary class="desplegable-titulo">Clase ${slot.numeroSlot}: ${slot.clase.nombre} nivel ${slot.nivel}</summary>
-                    <div class="desplegable-contenido">`;
+                    <summary class="desplegable-titulo">Clase ${slot.numeroSlot}: ${textoSeguro(slot.clase.nombre)} nivel ${slot.nivel}</summary>                    <div class="desplegable-contenido">`;
         
         if (slot.clase.rasgos && slot.clase.rasgos.length > 0) {
             let tieneRasgosClase = false;
             slot.clase.rasgos.forEach(rasgo => {
               if (rasgoDisponiblePorNivelClase(rasgo, slot.nivel)) {
                     tieneRasgosClase = true;
-                    listaRasgosActuales.push({...rasgo,origen: slot.clase.nombre});
-                    let resumen = rasgo.descripcionResum || (rasgo.descripcion ? rasgo.descripcion.substring(0, 60) + "..." : "Sin descripción.");
-                    resumen = resumen.replace(/<br>|###|\*\*/g, "");
-
-                    html += `
-                        <div class="rasgo-tarjeta-boton" onclick="abrirPopupRasgo(${contadorId})">
-                            <div class="rasgo-tarjeta-titulo">
-                                ${rasgo.nombre} <span style="font-size: 11px; font-weight: normal; color: #8b7355;">(Nvl ${rasgo.nivelClase || 1} de ${slot.clase.nombre})</span>
-                            </div>
-                            <div class="rasgo-tarjeta-resumen">${resumen}</div>
-                        </div>
-                    `;
-                    contadorId++;
+                    const tituloNivel = `<span style="font-size: 11px; font-weight: normal; color: #8b7355;">(Nvl ${rasgo.nivelClase || 1} de ${textoSeguro(slot.clase.nombre)})</span>`;
+                    html += renderTarjetaRasgoFicha(rasgo, slot.clase.nombre, tituloNivel);
+                    html += renderRasgosElegidosPorSeleccion(rasgo, `clase${slot.numeroSlot}`, slot.clase.nombre);
                 }
             });
   
             if (!tieneRasgosClase) {
-                html += `<p style="color: #776a62; font-style: italic; font-size: 13px; margin-left: 10px;">Aún no tienes rasgos desbloqueados para tu nivel de ${slot.clase.nombre}.</p>`;
-            }
+                html += `<p style="color: #776a62; font-style: italic; font-size: 13px; margin-left: 10px;">Aún no tienes rasgos desbloqueados para tu nivel de ${textoSeguro(slot.clase.nombre)}.</p>`;            }
         }
 
         if (slot.subclase && slot.subclase.rasgos && slot.subclase.rasgos.length > 0) {
             html += `<details open class="desplegable-subseccion">
-                        <summary class="desplegable-subtitulo">Subclase: ${slot.subclase.nombre}</summary>
+                        <summary class="desplegable-subtitulo">Subclase: ${textoSeguro(slot.subclase.nombre)}</summary>
                         <div class="desplegable-contenido">`;
             
             slot.subclase.rasgos.forEach(rasgo => {
                 if (rasgoDisponiblePorNivelClase(rasgo, slot.nivel)) {
-                    listaRasgosActuales.push({ ...rasgo, origen: slot.subclase.nombre });
-                    let resumen = rasgo.descripcionResum || (rasgo.descripcion ? rasgo.descripcion.substring(0, 60) + "..." : "Sin descripción.");
-                    resumen = resumen.replace(/<br>|###|\*\*/g, "");
-
-                    html += `
-                        <div class="rasgo-tarjeta-boton" onclick="abrirPopupRasgo(${contadorId})">
-                            <div class="rasgo-tarjeta-titulo">
-                                ${rasgo.nombre} <span style="font-size: 11px; font-weight: normal; color: #8b7355;">(Nvl ${rasgo.nivelClase || 1} de ${slot.clase.nombre})</span>
-                            </div>
-                            <div class="rasgo-tarjeta-resumen">${resumen}</div>
-                        </div>
-                    `;
-                    contadorId++;
+                    const tituloNivel = `<span style="font-size: 11px; font-weight: normal; color: #8b7355;">(Nvl ${rasgo.nivelClase || 1} de ${textoSeguro(slot.clase.nombre)})</span>`;
+                    html += renderTarjetaRasgoFicha(rasgo, slot.subclase.nombre, tituloNivel);
+                    html += renderRasgosElegidosPorSeleccion(rasgo, `clase${slot.numeroSlot}`, slot.subclase.nombre);
                 }
             });
 
@@ -1680,7 +1860,7 @@ function renderRasgos() {
         html += `</div></details>`;
     });
 
-    html += `</div>`; // Cierra el contenedor con scroll
+    html += `</div>`;
     document.querySelector(".panel-ventanas").innerHTML = html;
 }
 // --- FUNCIONES DEL POPUP DE RASGOS ---
@@ -1901,9 +2081,9 @@ function toggleOpcionSeleccionBuild(indice, opcionId) {
 function renderHechizos() {
   // Placeholder — podés expandir esto con tu lista de hechizos
   panelVentanas.innerHTML = `
-    <h2 class="titulo-panel">Hechizos</h2>
+    <h2 class="titulo-panel">Conjuros</h2>
     <p style="color:#6b5a53; text-align:center; margin-top:20px;">
-      ✨ Esta sección mostrará los hechizos conocidos del personaje.<br>
+      ✨ Esta sección mostrará los conjuros conocidos del personaje.<br>
       <small>Próximamente: filtros por nivel y escuela.</small>
     </p>
   `;
@@ -2575,8 +2755,8 @@ function actualizarResumenPersonaje() {
 
   document.getElementById("nombre-personaje").innerText = personajeActual.nombre || "Sin nombre";
   document.getElementById("info-personaje").innerText = `${razaNombre}, ${clasesTexto} · Nivel ${personajeActual.nivel}`;
-  document.getElementById("BC").innerText = `+${calcularBonificadorCompetencia()}`;
-  if (selectorNivelPersonaje) selectorNivelPersonaje.value = String(personajeActual.nivel);
+  actualizarDetalleCompetencia();
+  document.getElementById("BC").innerText = formatoValor(calcularBonificadorCompetencia());  if (selectorNivelPersonaje) selectorNivelPersonaje.value = String(personajeActual.nivel);
 }
 
 function refrescarFichaTrasBuild() {
@@ -2584,6 +2764,7 @@ function refrescarFichaTrasBuild() {
   refrescarEstadisticasPersonaje();
   actualizarResumenPersonaje();
   actualizarPuntosGolpe();
+  if (typeof actualizarVelocidad === "function") actualizarVelocidad();
   renderVida();
   if (typeof actualizarIniciativa === "function") actualizarIniciativa();
   if (typeof actualizarCA === "function") actualizarCA();
