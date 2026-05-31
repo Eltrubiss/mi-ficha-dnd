@@ -33,6 +33,11 @@ const personajePorDefecto = {
   inspiracion: false,
   concentracion: false,
   estadosActivos: [],
+  monedas: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+  equipo: [],
+  inventarioEquipo: [],
+  sintonizacionSlots: 3,
+  sintonizados: [],
   eleccionesRasgos: {},
   progresionNiveles: {},
   pgPorNivel: {}
@@ -153,6 +158,11 @@ function normalizarPersonaje(personaje) {
     ...datos,
     concentracion: Boolean(datos.concentracion),
     estadosActivos: normalizarListaEstados(datos.estadosActivos),
+    monedas: normalizarMonedasPersonaje(datos.monedas),
+    equipo: normalizarListaIds(datos.equipo),
+    inventarioEquipo: normalizarInventarioEquipo(datos.inventarioEquipo),
+    sintonizacionSlots: Math.max(0, Number(datos.sintonizacionSlots ?? personajePorDefecto.sintonizacionSlots) || 0),
+    sintonizados: normalizarListaIds(datos.sintonizados),
     eleccionesRasgos: { ...(datos.eleccionesRasgos || {}) },
     progresionNiveles: { ...(datos.progresionNiveles || {}) },
     pgPorNivel: { ...(datos.pgPorNivel || {}) }
@@ -217,6 +227,38 @@ function crearIdPersonaje() {
   return `personaje-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+
+function normalizarListaIds(valores) {
+  if (!Array.isArray(valores)) return [];
+  return [...new Set(valores.map(valor => String(valor || "").trim()).filter(Boolean))];
+}
+
+function normalizarMonedasPersonaje(monedas) {
+  const base = { ...personajePorDefecto.monedas };
+  Object.entries(monedas || {}).forEach(([clave, valor]) => {
+    if (!Object.prototype.hasOwnProperty.call(base, clave)) return;
+    const cantidad = Math.floor(Number(valor));
+    base[clave] = Number.isFinite(cantidad) ? Math.max(0, cantidad) : 0;
+  });
+  return base;
+}
+
+function normalizarInventarioEquipo(items) {
+  if (!Array.isArray(items)) return [];
+  return items.map((item, indice) => ({
+    id: String(item?.id || `equipo-${Date.now()}-${indice}-${Math.random().toString(36).slice(2, 7)}`),
+    nombre: String(item?.nombre || "Objeto sin nombre"),
+    descripcion: String(item?.descripcion || ""),
+    precio: String(item?.precio || ""),
+    tipo: ["arma", "armadura", "equipo"].includes(item?.tipo) ? item.tipo : "equipo",
+    subtipo: String(item?.subtipo || ""),
+    efectos: String(item?.efectos || ""),
+    etiquetas: Array.isArray(item?.etiquetas)
+      ? item.etiquetas.map(etiqueta => String(etiqueta || "").trim()).filter(Boolean)
+      : String(item?.etiquetas || "").split(",").map(etiqueta => etiqueta.trim()).filter(Boolean)
+  }));
+}
+
 function normalizarPersonajeGuardado(datos) {
   const datosCompatibles = clonarDatosPersonaje(datos);
   if (Object.prototype.hasOwnProperty.call(datosCompatibles, "Inspiracion")
@@ -230,6 +272,11 @@ function normalizarPersonajeGuardado(datos) {
     ...datosCompatibles,
     concentracion: Boolean(datosCompatibles.concentracion),
     estadosActivos: normalizarListaEstados(datosCompatibles.estadosActivos),
+    monedas: normalizarMonedasPersonaje(datosCompatibles.monedas),
+    equipo: normalizarListaIds(datosCompatibles.equipo),
+    inventarioEquipo: normalizarInventarioEquipo(datosCompatibles.inventarioEquipo),
+    sintonizacionSlots: Math.max(0, Number(datosCompatibles.sintonizacionSlots ?? personajePorDefecto.sintonizacionSlots) || 0),
+    sintonizados: normalizarListaIds(datosCompatibles.sintonizados),
     eleccionesRasgos: {
       ...clonarDatosPersonaje(personajePorDefecto.eleccionesRasgos),
       ...clonarDatosPersonaje(datosCompatibles.eleccionesRasgos)
@@ -2089,36 +2136,442 @@ function renderHechizos() {
   `;
 }
 
-function renderEquipo() {
-  // Buscamos los objetos del inventario del personaje en el libro de reglas
-  const inventario = personajeActual.equipo ?? [];
-  const escudoId   = personajeActual.escudo;
+const MONEDAS_DND = [
+  { id: "cp", nombre: "Cobre", etiqueta: "CP", valorCp: 1 },
+  { id: "sp", nombre: "Plata", etiqueta: "SP", valorCp: 10 },
+  { id: "ep", nombre: "Electro", etiqueta: "EP", valorCp: 50 },
+  { id: "gp", nombre: "Oro", etiqueta: "GP", valorCp: 100 },
+  { id: "pp", nombre: "Platino", etiqueta: "PP", valorCp: 1000 }
+];
 
-  const objetos = inventario
-    .map(id => libroDeReglasBasicas.equipo.find(e => e.id === id))
-    .filter(Boolean);
+const CONFIG_EQUIPO = {
+  arma: {
+    titulo: "Armas",
+    singular: "Arma",
+    subtipos: ["Arma sencilla", "Arma natural", "Arma improvisada", "Arma marcial"]
+  },
+  armadura: {
+    titulo: "Armaduras",
+    singular: "Armadura",
+    subtipos: ["Ligero", "Medio", "Pesado", "Escudo"]
+  },
+  equipo: {
+    titulo: "Equipo",
+    singular: "Equipo",
+    subtipos: ["Herramienta", "Objeto aventurero", "Objeto mágico", "Otro"]
+  }
+};
 
-  const escudo = escudoId
-    ? libroDeReglasBasicas.equipo.find(e => e.id === escudoId)
+function asegurarDatosEquipoPersonaje() {
+  personajeActual.monedas = normalizarMonedasPersonaje(personajeActual.monedas);
+  personajeActual.equipo = normalizarListaIds(personajeActual.equipo);
+  personajeActual.inventarioEquipo = normalizarInventarioEquipo(personajeActual.inventarioEquipo);
+  personajeActual.sintonizacionSlots = Math.max(0, Number(personajeActual.sintonizacionSlots ?? 3) || 0);
+  personajeActual.sintonizados = normalizarListaIds(personajeActual.sintonizados).slice(0, personajeActual.sintonizacionSlots);
+}
+
+function obtenerMonedaConfig(monedaId) {
+  return MONEDAS_DND.find(moneda => moneda.id === monedaId) || MONEDAS_DND[0];
+}
+
+function obtenerCantidadMoneda(monedaId) {
+  asegurarDatosEquipoPersonaje();
+  return Math.max(0, Math.floor(Number(personajeActual.monedas[monedaId]) || 0));
+}
+
+function cambiarCantidadMoneda(monedaId, modo, valor) {
+  asegurarDatosEquipoPersonaje();
+  const cantidad = Math.max(0, Math.floor(Number(valor)) || 0);
+  const actual = obtenerCantidadMoneda(monedaId);
+
+  if (modo === "sumar") personajeActual.monedas[monedaId] = actual + cantidad;
+  if (modo === "restar") personajeActual.monedas[monedaId] = Math.max(0, actual - cantidad);
+  if (modo === "establecer") personajeActual.monedas[monedaId] = cantidad;
+
+  marcarPersonajeModificado();
+  renderEquipo();
+  abrirPopupMoneda(monedaId);
+}
+
+
+function maximoComunDivisor(a, b) {
+  let x = Math.abs(Number(a) || 0);
+  let y = Math.abs(Number(b) || 0);
+  while (y) {
+    const resto = x % y;
+    x = y;
+    y = resto;
+  }
+  return x || 1;
+}
+
+function obtenerPasoCanjeMoneda(origenId, destinoId) {
+  const origen = obtenerMonedaConfig(origenId);
+  const destino = obtenerMonedaConfig(destinoId);
+  return origen && destino ? origen.valorCp / maximoComunDivisor(origen.valorCp, destino.valorCp) : 1;
+}
+
+function obtenerMaximoCanjeMoneda(origenId, destinoId) {
+  const origen = obtenerMonedaConfig(origenId);
+  const destino = obtenerMonedaConfig(destinoId);
+  if (!origen || !destino || origen.id === destino.id) return 0;
+  const cantidadOrigen = obtenerCantidadMoneda(origenId);
+  const valorTotalOrigen = cantidadOrigen * origen.valorCp;
+
+  return Math.floor(valorTotalOrigen / destino.valorCp);
+}
+
+function obtenerCostoCanjeEnOrigen(origenId, destinoId, cantidadDestino) {
+  const origen = obtenerMonedaConfig(origenId);
+  const destino = obtenerMonedaConfig(destinoId);
+  const cantidad = Math.max(0, Math.floor(Number(cantidadDestino)) || 0);
+  const costo = (cantidad * destino.valorCp) / origen.valorCp;
+  return Number.isInteger(costo) ? costo : null;
+}
+
+function canjearMoneda(origenId) {
+  const destinoId = document.getElementById("monedaDestino")?.value;
+  const cantidadDestino = Math.max(0, Math.floor(Number(document.getElementById("monedaCanjeCantidad")?.value)) || 0);
+  const maximo = obtenerMaximoCanjeMoneda(origenId, destinoId);
+  const costoOrigen = obtenerCostoCanjeEnOrigen(origenId, destinoId, cantidadDestino);
+
+  if (!destinoId || destinoId === origenId || cantidadDestino <= 0 || cantidadDestino > maximo || costoOrigen === null) {
+    abrirPopupMoneda(origenId);
+    return;
+  }
+
+  personajeActual.monedas[origenId] = obtenerCantidadMoneda(origenId) - costoOrigen;
+  personajeActual.monedas[destinoId] = obtenerCantidadMoneda(destinoId) + cantidadDestino;
+  marcarPersonajeModificado();
+  renderEquipo();
+  abrirPopupMoneda(origenId);
+}
+
+function abrirPopupEquipo(titulo, contenidoHtml) {
+  const popup = document.getElementById("popup-rasgo");
+  const contenido = document.getElementById("popup-rasgo-contenido");
+  if (!popup || !contenido) return;
+
+  contenido.innerHTML = `
+    <div class="equipo-popup-grid">
+      <h3 style="color:#5a4035; margin:0 34px 8px 0; font-family:Georgia, serif;">${textoSeguro(titulo)}</h3>
+      ${contenidoHtml}
+    </div>
+  `;
+  popup.classList.remove("oculto");
+}
+
+function cerrarPopupEquipo() {
+  cerrarPopupRasgo();
+}
+
+function abrirPopupMoneda(monedaId) {
+  asegurarDatosEquipoPersonaje();
+  const moneda = obtenerMonedaConfig(monedaId);
+  const opcionesDestino = MONEDAS_DND
+    .filter(item => item.id !== monedaId)
+    .map(item => {
+      const maximo = obtenerMaximoCanjeMoneda(monedaId, item.id);
+      const paso = obtenerPasoCanjeMoneda(monedaId, item.id);
+      const deshabilitada = maximo < paso;
+      const avisoExactitud = paso > 1 ? ` (múltiplos de ${paso})` : "";
+      return `<option value="${item.id}" ${deshabilitada ? "disabled" : ""}>${item.nombre} (${item.etiqueta}) — máx. ${maximo}${avisoExactitud}</option>`;
+    }).join("");
+
+  abrirPopupEquipo(`Monedas de ${moneda.nombre}`, `
+    <p style="margin:0; color:#6b5a53;">Cantidad actual: <strong>${obtenerCantidadMoneda(monedaId)} ${moneda.etiqueta}</strong></p>
+    <div class="equipo-popup-fila">
+      <div class="equipo-popup-campo">
+        <label for="monedaValor">Cantidad</label>
+        <input id="monedaValor" type="number" min="0" step="1" value="1">
+      </div>
+      <div class="equipo-popup-campo">
+        <label>Acciones</label>
+        <div class="equipo-popup-acciones" style="justify-content:flex-start; margin-top:0;">
+          <button class="equipo-popup-accion" type="button" onclick="cambiarCantidadMoneda('${monedaId}', 'sumar', document.getElementById('monedaValor').value)">Sumar</button>
+          <button class="equipo-popup-accion" type="button" onclick="cambiarCantidadMoneda('${monedaId}', 'restar', document.getElementById('monedaValor').value)">Restar</button>
+          <button class="equipo-popup-accion" type="button" onclick="cambiarCantidadMoneda('${monedaId}', 'establecer', document.getElementById('monedaValor').value)">Establecer</button>
+        </div>
+      </div>
+    </div>
+    <hr class="equipo-separador">
+    <div class="equipo-popup-campo">
+      <label for="monedaDestino">Transformar a</label>
+      <select id="monedaDestino" onchange="actualizarMaximoCanjeMoneda('${monedaId}')">${opcionesDestino}</select>
+    </div>
+    <div class="equipo-popup-campo">
+      <label for="monedaCanjeCantidad">Cantidad de monedas destino</label>
+      <input id="monedaCanjeCantidad" type="number" min="0" step="1" value="0">
+      <small id="monedaCanjeAyuda" style="color:#6b5a53; display:block; margin-top:5px;"></small>
+    </div>
+    <div class="equipo-popup-acciones">
+      <button class="equipo-popup-accion" type="button" onclick="canjearMoneda('${monedaId}')">Transformar</button>
+    </div>
+  `);
+  actualizarMaximoCanjeMoneda(monedaId);
+}
+
+function actualizarMaximoCanjeMoneda(origenId) {
+  const destinoId = document.getElementById("monedaDestino")?.value;
+  const input = document.getElementById("monedaCanjeCantidad");
+  const ayuda = document.getElementById("monedaCanjeAyuda");
+  if (!destinoId || !input || !ayuda) return;
+
+  const maximo = obtenerMaximoCanjeMoneda(origenId, destinoId);
+  const paso = obtenerPasoCanjeMoneda(origenId, destinoId);
+  input.max = String(maximo);
+  input.step = String(paso);
+  if (Number(input.value) > maximo) input.value = String(maximo);
+  ayuda.textContent = paso > 1
+    ? `Máximo permitido: ${maximo}. Para no partir monedas de origen, usa múltiplos de ${paso}.`
+    : `Máximo permitido: ${maximo}.`;
+}
+
+function crearItemEquipoDesdeFormulario(tipo) {
+  const config = CONFIG_EQUIPO[tipo] || CONFIG_EQUIPO.equipo;
+  const nombre = document.getElementById("equipoNombre")?.value.trim();
+  if (!nombre) return;
+
+  const item = {
+    id: `custom-${tipo}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    nombre,
+    descripcion: document.getElementById("equipoDescripcion")?.value.trim() || "",
+    precio: document.getElementById("equipoPrecio")?.value.trim() || "",
+    tipo,
+    subtipo: document.getElementById("equipoSubtipo")?.value || config.subtipos[0] || "",
+    efectos: document.getElementById("equipoEfectos")?.value.trim() || "",
+    etiquetas: (document.getElementById("equipoEtiquetas")?.value || "")
+      .split(",")
+      .map(etiqueta => etiqueta.trim())
+      .filter(Boolean)
+  };
+
+  personajeActual.inventarioEquipo.push(item);
+  marcarPersonajeModificado();
+  cerrarPopupEquipo();
+  renderEquipo();
+}
+
+function abrirPopupAgregarEquipo(tipo) {
+  const config = CONFIG_EQUIPO[tipo] || CONFIG_EQUIPO.equipo;
+  const opcionesSubtipo = config.subtipos.map(subtipo => `<option value="${textoSeguro(subtipo)}">${textoSeguro(subtipo)}</option>`).join("");
+
+  abrirPopupEquipo(`Añadir ${config.singular}`, `
+    <div class="equipo-popup-campo">
+      <label for="equipoNombre">Nombre</label>
+      <input id="equipoNombre" type="text" placeholder="Ej.: Espada larga">
+    </div>
+    <div class="equipo-popup-campo">
+      <label for="equipoDescripcion">Caja con descripción</label>
+      <textarea id="equipoDescripcion" rows="4" placeholder="Descripción del objeto"></textarea>
+    </div>
+    <div class="equipo-popup-fila">
+      <div class="equipo-popup-campo">
+        <label for="equipoPrecio">Precio</label>
+        <input id="equipoPrecio" type="text" placeholder="Ej.: 15 gp">
+      </div>
+      <div class="equipo-popup-campo">
+        <label for="equipoSubtipo">Subtipo</label>
+        <select id="equipoSubtipo">${opcionesSubtipo}</select>
+      </div>
+    </div>
+    <div class="equipo-popup-campo">
+      <label for="equipoEfectos">Efectos correspondiente</label>
+      <textarea id="equipoEfectos" rows="3" placeholder="Ej.: 1d8 cortante, +1 CA, requiere sintonización..."></textarea>
+    </div>
+    <div class="equipo-popup-campo">
+      <label for="equipoEtiquetas">Etiquetas</label>
+      <input id="equipoEtiquetas" type="text" placeholder="Ligera, Arrojadiza, Una mano">
+    </div>
+    <div class="equipo-popup-acciones">
+      <button class="equipo-popup-accion" type="button" onclick="crearItemEquipoDesdeFormulario('${tipo}')">Añadir</button>
+    </div>
+  `);
+}
+
+function abrirPopupSlotsSintonizacion() {
+  asegurarDatosEquipoPersonaje();
+  abrirPopupEquipo("Configurar sintonización", `
+    <div class="equipo-popup-campo">
+      <label for="sintonizacionSlotsInput">Cantidad de slots</label>
+      <input id="sintonizacionSlotsInput" type="number" min="0" step="1" value="${personajeActual.sintonizacionSlots}">
+    </div>
+    <div class="equipo-popup-acciones">
+      <button class="equipo-popup-accion" type="button" onclick="guardarSlotsSintonizacion()">Guardar</button>
+    </div>
+  `);
+}
+
+function guardarSlotsSintonizacion() {
+  const cantidad = Math.max(0, Math.floor(Number(document.getElementById("sintonizacionSlotsInput")?.value)) || 0);
+  personajeActual.sintonizacionSlots = cantidad;
+  personajeActual.sintonizados = normalizarListaIds(personajeActual.sintonizados).slice(0, cantidad);
+  marcarPersonajeModificado();
+  cerrarPopupEquipo();
+  renderEquipo();
+}
+
+function cambiarSintonizacionSlot(indice, itemId) {
+  asegurarDatosEquipoPersonaje();
+  personajeActual.sintonizados[indice] = itemId;
+  personajeActual.sintonizados = personajeActual.sintonizados.map(id => id || "").slice(0, personajeActual.sintonizacionSlots);
+  marcarPersonajeModificado();
+  renderEquipo();
+}
+
+function obtenerEquipoBiblioteca() {
+  const items = [];
+  const escudo = personajeActual.escudo
+    ? libroDeReglasBasicas.equipo.find(item => item.id === personajeActual.escudo)
+    : null;
+  const armadura = personajeActual.armadura
+    ? libroDeReglasBasicas.armaduras.find(item => item.id === personajeActual.armadura)
     : null;
 
-  const todosLosObjetos = [...objetos, ...(escudo ? [escudo] : [])];
+  (personajeActual.equipo || []).forEach(id => {
+    const item = libroDeReglasBasicas.equipo.find(objeto => objeto.id === id);
+    if (item) items.push({
+      id: item.id,
+      nombre: item.nombre,
+      descripcion: item.descripcion || "Objeto del libro de reglas.",
+      precio: item.precio || "—",
+      tipo: item.tipo === "escudo" ? "armadura" : "equipo",
+      subtipo: item.tipo === "escudo" ? "Escudo" : (item.subtipo || "Objeto"),
+      efectos: item.bonifCA ? `+${item.bonifCA} CA` : "—",
+      etiquetas: item.etiquetas || []
+    });
+  });
+
+  if (escudo) items.push({
+    id: escudo.id,
+    nombre: escudo.nombre,
+    descripcion: escudo.descripcion || "Escudo equipado.",
+    precio: escudo.precio || "—",
+    tipo: "armadura",
+    subtipo: "Escudo",
+    efectos: escudo.bonifCA ? `+${escudo.bonifCA} CA` : "—",
+    etiquetas: escudo.etiquetas || []
+  });
+
+  if (armadura) items.push({
+    id: armadura.id,
+    nombre: armadura.nombre,
+    descripcion: armadura.descripcion || "Armadura equipada.",
+    precio: armadura.precio || "—",
+    tipo: "armadura",
+    subtipo: armadura.tipo || "Armadura",
+    efectos: armadura.caBase ? `CA base ${armadura.caBase}` : "—",
+    etiquetas: armadura.etiquetas || []
+  });
+
+  return items;
+}
+
+function obtenerTodosLosItemsEquipo() {
+  asegurarDatosEquipoPersonaje();
+  return [...obtenerEquipoBiblioteca(), ...personajeActual.inventarioEquipo];
+}
+
+function renderTarjetaEquipo(item) {
+  const etiquetas = (item.etiquetas || []).map(etiqueta => `<span class="equipo-etiqueta">${textoSeguro(etiqueta)}</span>`).join("");
+  const config = CONFIG_EQUIPO[item.tipo] || CONFIG_EQUIPO.equipo;
+
+  return `
+    <article class="equipo-item">
+      <div class="equipo-item-cabecera">
+        <strong>${textoSeguro(item.nombre)}</strong>
+        <span class="equipo-tipo">${textoSeguro(config.singular)}${item.subtipo ? ` · ${textoSeguro(item.subtipo)}` : ""}</span>
+      </div>
+      <p class="equipo-descripcion">${textoSeguro(item.descripcion || "Sin descripción.")}</p>
+      <hr class="equipo-separador">
+      <p class="equipo-meta"><strong>Precio:</strong> ${textoSeguro(item.precio || "—")}</p>
+      <p class="equipo-meta"><strong>Tipo:</strong> ${textoSeguro(config.singular)}${item.subtipo ? ` / ${textoSeguro(item.subtipo)}` : ""}</p>
+      <p class="equipo-efectos"><strong>Efectos:</strong> ${textoSeguro(item.efectos || "—")}</p>
+      <div class="equipo-etiquetas">${etiquetas || `<span class="equipo-etiqueta">Sin etiquetas</span>`}</div>
+    </article>
+  `;
+}
+
+function renderSeccionEquipo(tipo, items) {
+  const config = CONFIG_EQUIPO[tipo];
+  const contenido = items.length
+    ? items.map(renderTarjetaEquipo).join("")
+    : `<p class="equipo-vacio">No hay ${config.titulo.toLowerCase()} registrados.</p>`;
+
+  return `
+    <details class="equipo-seccion" open>
+      <summary>
+        <button class="equipo-add-btn" type="button" onclick="event.preventDefault(); abrirPopupAgregarEquipo('${tipo}')" aria-label="Añadir ${config.singular}">+</button>
+        <span class="equipo-seccion-titulo">${config.titulo}</span>
+        <small>${items.length}</small>
+      </summary>
+      <div class="equipo-lista">${contenido}</div>
+    </details>
+  `;
+}
+
+function renderSintonizacion(items) {
+  asegurarDatosEquipoPersonaje();
+  const opcionesBase = `<option value="">— Sin objeto —</option>` + items
+    .map(item => `<option value="${textoSeguro(item.id)}">${textoSeguro(item.nombre)}</option>`)
+    .join("");
+
+  const slots = Array.from({ length: personajeActual.sintonizacionSlots }, (_, indice) => {
+    const seleccionado = personajeActual.sintonizados[indice] || "";
+    return `
+      <div class="sintonizacion-slot">
+        <label for="sintonizacionSlot${indice}">Slot ${indice + 1}</label>
+        <select id="sintonizacionSlot${indice}" onchange="cambiarSintonizacionSlot(${indice}, this.value)">
+          ${opcionesBase.replace(`value="${textoSeguro(seleccionado)}"`, `value="${textoSeguro(seleccionado)}" selected`)}
+        </select>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="sintonizacion-cabecera">
+      <h3>Sintonización</h3>
+      <button class="sintonizar-config-btn" type="button" onclick="abrirPopupSlotsSintonizacion()">Configurar slots</button>
+    </div>
+    ${personajeActual.sintonizacionSlots > 0 ? `<div class="sintonizacion-slots">${slots}</div>` : `<p class="sintonizacion-vacio">No hay slots de sintonización configurados.</p>`}
+  `;
+}
+
+function renderEquipo() {
+  asegurarDatosEquipoPersonaje();
+  const items = obtenerTodosLosItemsEquipo();
+  const itemsPorTipo = {
+    arma: items.filter(item => item.tipo === "arma"),
+    armadura: items.filter(item => item.tipo === "armadura"),
+    equipo: items.filter(item => item.tipo !== "arma" && item.tipo !== "armadura")
+  };
 
   panelVentanas.innerHTML = `
     <h2 class="titulo-panel">Equipo</h2>
-    ${todosLosObjetos.length === 0
-      ? `<p style="color:#6b5a53; text-align:center; margin-top:20px;">No hay objetos en el inventario.</p>`
-      : `<div class="equipo-lista">
-          ${todosLosObjetos.map(obj => `
-            <div class="equipo-item">
-              <strong>${obj.nombre}</strong>
-              <span class="equipo-tipo">${obj.tipo ?? ""}</span>
-              ${obj.bonifCA  ? `<small>+${obj.bonifCA} CA</small>` : ""}
-              ${obj.caBase   ? `<small>CA base: ${obj.caBase}</small>` : ""}
-            </div>
-          `).join("")}
-        </div>`
-    }
+    <div class="equipo-dashboard">
+      <div class="equipo-cajas-centrales">
+        <section class="equipo-caja-central">
+          <h3>Tracker de monedas</h3>
+          <div class="monedas-grid">
+            ${MONEDAS_DND.map(moneda => `
+              <button class="moneda-btn" type="button" onclick="abrirPopupMoneda('${moneda.id}')">
+                <span class="moneda-cantidad">${obtenerCantidadMoneda(moneda.id)}</span>
+                <span class="moneda-nombre">${moneda.nombre} (${moneda.etiqueta})</span>
+              </button>
+            `).join("")}
+          </div>
+        </section>
+        <section class="equipo-caja-central">
+          <h3>Trackeo de Equipo</h3>
+          ${renderSeccionEquipo("arma", itemsPorTipo.arma)}
+          ${renderSeccionEquipo("armadura", itemsPorTipo.armadura)}
+          ${renderSeccionEquipo("equipo", itemsPorTipo.equipo)}
+        </section>
+        <section class="equipo-caja-central">
+          ${renderSintonizacion(items)}
+        </section>
+      </div>
+    </div>
   `;
 }
 
