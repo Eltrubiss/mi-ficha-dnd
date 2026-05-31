@@ -28,6 +28,10 @@ const personajePorDefecto = {
   CAR: 10,
   armadura: "",
   escudo: "",
+  equipo: [],
+  monedas: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+  inventario: [],
+  sintonizacion: { slotsMax: 3, itemIds: [] },
   hpActual: 0,
   hpTemporales: 0,
   inspiracion: false,
@@ -133,6 +137,71 @@ function obtenerIdsPersonajesGuardados() {
   return ids;
 }
 
+function normalizarListaEstados(estados) {
+  if (!Array.isArray(estados)) return [];
+  return [...new Set(estados.map(estadoId => String(estadoId || "").trim()).filter(Boolean))];
+}
+
+function normalizarMonedas(monedas) {
+  const monedasBase = personajePorDefecto.monedas;
+  return Object.keys(monedasBase).reduce((resultado, moneda) => {
+    const cantidad = Number(monedas?.[moneda]);
+    resultado[moneda] = Number.isFinite(cantidad) ? Math.max(0, Math.floor(cantidad)) : monedasBase[moneda];
+    return resultado;
+  }, {});
+}
+
+function normalizarEntradaInventario(item) {
+  if (typeof item === "string") {
+    const id = item.trim();
+    return id ? { id, cantidad: 1, equipado: true } : null;
+  }
+
+  if (!item || typeof item !== "object") return null;
+
+  const id = String(item.id || "").trim();
+  const nombre = String(item.nombre || "").trim();
+  if (!id && !nombre) return null;
+
+  const cantidad = Number(item.cantidad);
+  return {
+    ...item,
+    ...(id ? { id } : {}),
+    ...(nombre ? { nombre } : {}),
+    cantidad: Number.isFinite(cantidad) && cantidad > 0 ? Math.floor(cantidad) : 1,
+    equipado: Boolean(item.equipado)
+  };
+}
+
+function normalizarInventario(inventario, equipoCompatible) {
+  const origenInventario = Array.isArray(inventario) ? inventario : [];
+  const inventarioNormalizado = origenInventario
+    .map(normalizarEntradaInventario)
+    .filter(Boolean);
+
+  if (inventarioNormalizado.length > 0 || !Array.isArray(equipoCompatible)) {
+    return inventarioNormalizado;
+  }
+
+  return equipoCompatible
+    .map(normalizarEntradaInventario)
+    .filter(Boolean);
+}
+
+function normalizarSintonizacion(sintonizacion) {
+  const slotsMax = Number(sintonizacion?.slotsMax);
+  return {
+    slotsMax: Number.isFinite(slotsMax) && slotsMax >= 0
+      ? Math.floor(slotsMax)
+      : personajePorDefecto.sintonizacion.slotsMax,
+    itemIds: normalizarListaEstados(sintonizacion?.itemIds)
+  };
+}
+
+function normalizarEquipoCompatible(equipo) {
+  return normalizarListaEstados(equipo);
+}
+
 function normalizarPersonaje(personaje) {
   const datos = clonarPersonaje(personaje || {});
   if (Object.prototype.hasOwnProperty.call(datos, "Inspiracion")
@@ -144,6 +213,12 @@ function normalizarPersonaje(personaje) {
   return {
     ...clonarPersonaje(personajePorDefecto),
     ...datos,
+    concentracion: Boolean(datos.concentracion),
+    estadosActivos: normalizarListaEstados(datos.estadosActivos),
+    equipo: normalizarEquipoCompatible(datos.equipo),
+    monedas: normalizarMonedas(datos.monedas),
+    inventario: normalizarInventario(datos.inventario, datos.equipo),
+    sintonizacion: normalizarSintonizacion(datos.sintonizacion),
     eleccionesRasgos: { ...(datos.eleccionesRasgos || {}) },
     progresionNiveles: { ...(datos.progresionNiveles || {}) },
     pgPorNivel: { ...(datos.pgPorNivel || {}) }
