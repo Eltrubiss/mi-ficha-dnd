@@ -3069,7 +3069,7 @@ function obtenerFormulaImpactoEquipo(item) {
   const competencia = obtenerBonoCompetenciaAtaque(item);
   const bonificador = Number(item.ataqueBonificador) || 0;
   const total = mod + competencia + bonificador;
-  return `${formatoValor(total)} (${formatoValor(mod)} ${stat} + ${formatoValor(competencia)} comp. + ${formatoValor(bonificador)} bonif.)`;
+  return `${formatoValor(total)} (${formatoValor(mod)} ${stat} ${formatoValor(competencia)} comp. ${formatoValor(bonificador)} bonif.)`;
 }
 
 function describirDanoEquipo(item, secundario = false) {
@@ -3079,7 +3079,7 @@ function describirDanoEquipo(item, secundario = false) {
   const stat = secundario ? (item.danoModSecundario || item.danoMod || "FUE") : (item.danoMod || "FUE");
   if (!dado && !tipo && !critico) return "";
   const mod = obtenerModificadorStatEquipo(stat);
-  return `${[dado, tipo].filter(Boolean).join(" ") || "—"} + ${formatoValor(mod)} (${stat})${critico ? ` · crítico ${critico}` : ""}`;
+  return `${[dado, tipo].filter(Boolean).join(" ") || "—"} ${formatoValor(mod)} (${stat})${critico ? ` · crítico ${critico}` : ""}`;
 }
 
 function obtenerArmasEquipadasCombate() {
