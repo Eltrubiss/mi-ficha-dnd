@@ -462,6 +462,13 @@ function normalizarNivelClase(valor) {
   return Math.max(0, Math.min(20, nivel));
 }
 
+function obtenerSubclasesDeClase(clase) {
+  if (!clase) return [];
+  if (Array.isArray(clase.subclases)) return clase.subclases;
+  if (Array.isArray(clase.subclase)) return clase.subclase;
+  return [];
+}
+
 function obtenerSlotsClases() {
   return [1, 2, 3].map(numeroSlot => {
     const claseId = personajeActual[`clase${numeroSlot}`] || "";
@@ -470,9 +477,8 @@ function obtenerSlotsClases() {
     const clase = claseId
       ? libroDeReglasBasicas.clases.find(c => c.id === claseId)
       : null;
-    const subclase = clase?.subclases
-      ? clase.subclases.find(sc => sc.id === subclaseId?.toLowerCase())
-      : null;
+    const subclase = obtenerSubclasesDeClase(clase)
+      .find(sc => sc.id === subclaseId?.toLowerCase()) || null;
 
     return { numeroSlot, claseId, nivel, subclaseId, clase, subclase };
   });
@@ -566,6 +572,14 @@ function recalcularClasesDesdeProgresion() {
   personajeActual.clase3 = secundarias[1]?.[0] || "";
   personajeActual.nivelClase3 = secundarias[1]?.[1] || 0;
 
+  [1, 2, 3].forEach(numeroSlot => {
+    const claseId = personajeActual[`clase${numeroSlot}`];
+    const subclaseId = personajeActual[`subclase${numeroSlot}`];
+    if (subclaseId && !obtenerSubclasePorId(claseId, subclaseId)) {
+      personajeActual[`subclase${numeroSlot}`] = "";
+    }
+  });
+
   sincronizarNivelPersonajeDesdeClases();
   claseElegida = obtenerClasePorId(personajeActual.clase1);
   clasesActivas = obtenerSlotsClases();
@@ -597,6 +611,14 @@ function obtenerRasgosClaseEnNivelPersonaje(nivelPersonaje, claseId) {
 
   const nivelClase = contarNivelClaseHastaNivelPersonaje(claseId, nivelPersonaje);
   return clase.rasgos.filter(rasgo => (rasgo.nivelClase || 1) === nivelClase);
+}
+
+function obtenerRasgosSubclaseEnNivelPersonaje(nivelPersonaje, claseId) {
+  const slot = obtenerSlotActivoPorClaseId(claseId);
+  if (!slot?.subclase?.rasgos) return [];
+
+  const nivelClase = contarNivelClaseHastaNivelPersonaje(claseId, nivelPersonaje);
+  return slot.subclase.rasgos.filter(rasgo => (rasgo.nivelClase || 1) === nivelClase);
 }
 
 function ajustarProgresionANivelTotal(nuevoNivelTotal) {
@@ -1833,7 +1855,7 @@ function renderCompetencias() {
   ];
 
   panelVentanas.innerHTML = `
-    <h2 class="titulo-panel">Competencias</h2>
+    <h2 class="titulo-panel">COMPETENCIAS</h2>
 
     <div class="comp-bloques">
 
@@ -1943,7 +1965,7 @@ function renderRasgos() {
             .join("");
     };
     let html = `
-        <h2 class="titulo-panel">Rasgos y Atributos</h2>
+        <h2 class="titulo-panel">RASGOS Y ATRIBUTOS</h2>
         <div class="rasgos-contenedor-scroll" style="max-height: 75vh; overflow-y: auto; padding-right: 5px;">
     `;
 
@@ -1998,18 +2020,22 @@ function renderRasgos() {
                 html += `<p style="color: #776a62; font-style: italic; font-size: 13px; margin-left: 10px;">Aún no tienes rasgos desbloqueados para tu nivel de ${textoSeguro(slot.clase.nombre)}.</p>`;            }
         }
 
-        if (slot.subclase && slot.subclase.rasgos && slot.subclase.rasgos.length > 0) {
+        if (slot.subclase) {
             html += `<details open class="desplegable-subseccion">
                         <summary class="desplegable-subtitulo">Subclase: ${textoSeguro(slot.subclase.nombre)}</summary>
                         <div class="desplegable-contenido">`;
-            
-            slot.subclase.rasgos.forEach(rasgo => {
-                if (rasgoDisponiblePorNivelClase(rasgo, slot.nivel)) {
+            const rasgosDisponiblesSubclase = (slot.subclase.rasgos || [])
+                .filter(rasgo => rasgoDisponiblePorNivelClase(rasgo, slot.nivel));
+
+            if (rasgosDisponiblesSubclase.length > 0) {
+                rasgosDisponiblesSubclase.forEach(rasgo => {
                     const tituloNivel = `<span style="font-size: 11px; font-weight: normal; color: #8b7355;">(Nvl ${rasgo.nivelClase || 1} de ${textoSeguro(slot.clase.nombre)})</span>`;
                     html += renderTarjetaRasgoFicha(rasgo, slot.subclase.nombre, tituloNivel);
                     html += renderRasgosElegidosPorSeleccion(rasgo, `clase${slot.numeroSlot}`, slot.subclase.nombre);
-                }
-            });
+                });
+            } else {
+                html += `<p style="color: #776a62; font-style: italic; font-size: 13px; margin-left: 10px;">Aún no tienes rasgos desbloqueados para ${textoSeguro(slot.subclase.nombre)}.</p>`;
+            }
 
             html += `</div></details>`;
         }
@@ -2207,6 +2233,23 @@ function abrirPopupOpcionSeleccionBuild(indice, opcionId) {
     </div>
   `;
 }
+function obtenerNumeroSlotDesdeContextoClase(contexto) {
+  const match = String(contexto || "").match(/^clase(\d+)$/);
+  return match ? Number(match[1]) : null;
+}
+
+function aplicarSeleccionSubclaseAlPersonaje(seleccion, contexto, subclaseId) {
+  if (seleccion.tipo !== "subclase") return;
+
+  const numeroSlot = obtenerNumeroSlotDesdeContextoClase(contexto);
+  if (!numeroSlot) return;
+
+  const claseId = personajeActual[`clase${numeroSlot}`];
+  const subclaseValida = obtenerSubclasePorId(claseId, subclaseId);
+  personajeActual[`subclase${numeroSlot}`] = subclaseValida ? subclaseValida.id : "";
+  clasesActivas = obtenerSlotsClases();
+}
+
 function toggleOpcionSeleccionBuild(indice, opcionId) {
   const item = listaSeleccionesBuildActuales[indice];
   if (!item) return;
@@ -2221,7 +2264,9 @@ function toggleOpcionSeleccionBuild(indice, opcionId) {
     ? actuales.filter(id => id !== opcionId)
     : actuales;
 
-  if (!yaExiste && actuales.length < (seleccion.cantidadSeleccionable || 0)) {
+  if (!yaExiste && (seleccion.cantidadSeleccionable || 0) === 1) {
+    nuevas = [opcionId];
+  } else if (!yaExiste && actuales.length < (seleccion.cantidadSeleccionable || 0)) {
     nuevas = [...actuales, opcionId];
   }
 
@@ -2230,7 +2275,9 @@ function toggleOpcionSeleccionBuild(indice, opcionId) {
   if (!cambioReal) return;
 
   personajeActual.eleccionesRasgos[clave] = nuevas;
+  aplicarSeleccionSubclaseAlPersonaje(seleccion, contexto, nuevas[0] || "");
   marcarPersonajeModificado();
+  refrescarFichaTrasBuild();
   renderBuildPersonaje();
   renderPopupSeleccionBuild(indice);
 }
@@ -2240,8 +2287,8 @@ function renderHechizos() {
   panelVentanas.innerHTML = `
     <h2 class="titulo-panel">Conjuros</h2>
     <p style="color:#6b5a53; text-align:center; margin-top:20px;">
-      ✨ Esta sección mostrará los conjuros conocidos del personaje.<br>
-      <small>Próximamente: filtros por nivel y escuela.</small>
+      Esta sección mostrará los conjuros conocidos del personaje.<br>
+      <small>Próximamente: Clases lanzadoras de Conjuros.</small>
     </p>
   `;
 }
@@ -3205,7 +3252,7 @@ function renderEquipo() {
   };
 
   panelVentanas.innerHTML = `
-    <h2 class="titulo-panel">Equipo</h2>
+    <h2 class="titulo-panel">EQUIPO</h2>
     <div class="equipo-dashboard">
       <div class="equipo-cajas-centrales">
         <section class="equipo-caja-central">
@@ -3328,7 +3375,8 @@ function obtenerNombreRaza(razaId) {
 
   
 function obtenerSubclasePorId(claseId, subclaseId) {
-  return obtenerClasePorId(claseId)?.subclases?.find(subclase => subclase.id === subclaseId) || null;
+  return obtenerSubclasesDeClase(obtenerClasePorId(claseId))
+    .find(subclase => subclase.id === subclaseId) || null;
 }
 
 function describirClasePersonaje(personaje, numeroSlot) {
@@ -3349,11 +3397,11 @@ function crearSubtituloTarjetaPersonaje(personaje) {
   const clase = obtenerClasePorId(claseId);
   const subclase = obtenerSubclasePorId(claseId, subclaseId);
   const claseTexto = clase?.nombre || obtenerNombreClase(claseId);
-  const subclaseTexto = subclase?.nombre || "Sin subclase";
+  const subclaseTexto = subclase?.nombre || "";
   const raza = obtenerNombreRaza(personaje.raza || personajePorDefecto.raza);
   const nivel = Number(personaje.nivel) || personajePorDefecto.nivel;
 
-  return `${claseTexto} / ${subclaseTexto} / ${raza} / Nivel ${nivel}`;
+  return `${raza} ${claseTexto} ${subclaseTexto},  Nivel ${nivel}`;
 }
 
 function obtenerPersonajesSelector() {
@@ -3536,7 +3584,13 @@ function resolverOpcionesSeleccion(seleccion, contexto = "general") {
   const opcionesDesdeFuente = seleccion.fuenteOpciones?.coleccion
     ? obtenerValorPorRuta(libroDeReglasBasicas, seleccion.fuenteOpciones.coleccion)
     : [];
-  const opciones = opcionesDirectas.length ? opcionesDirectas : (Array.isArray(opcionesDesdeFuente) ? opcionesDesdeFuente : []);
+  const claseId = obtenerClaseIdDesdeContexto(contexto);
+  const opcionesSubclase = seleccion.tipo === "subclase" && claseId
+    ? obtenerSubclasesDeClase(obtenerClasePorId(claseId))
+    : [];
+  const opciones = opcionesDirectas.length
+    ? opcionesDirectas
+    : (Array.isArray(opcionesDesdeFuente) && opcionesDesdeFuente.length ? opcionesDesdeFuente : opcionesSubclase);
 
   return opciones.filter(opcion => opcionPasaFiltrosSeleccion(opcion, seleccion, contexto));
 }
@@ -3565,11 +3619,15 @@ function obtenerOpcionesSeleccionadasDisponibles() {
     .flatMap(rasgo => obtenerOpcionesSeleccionadasDeRasgo(rasgo, "subraza", subrazaElegida.nombre));
   const opcionesClase = clasesActivas.flatMap(slot => {
     if (!slot.clase || slot.nivel <= 0) return [];
-
-    return (slot.clase.rasgos || [])
+    const contexto = `clase${slot.numeroSlot}`;
+    const opcionesDesdeClase = (slot.clase.rasgos || [])
       .filter(rasgo => rasgoDisponiblePorNivelClase(rasgo, slot.nivel))
-      .flatMap(rasgo => obtenerOpcionesSeleccionadasDeRasgo(rasgo, `clase${slot.numeroSlot}`, slot.clase.nombre));
-  });
+      .flatMap(rasgo => obtenerOpcionesSeleccionadasDeRasgo(rasgo, contexto, slot.clase.nombre));
+    const opcionesDesdeSubclase = (slot.subclase?.rasgos || [])
+      .filter(rasgo => rasgoDisponiblePorNivelClase(rasgo, slot.nivel))
+      .flatMap(rasgo => obtenerOpcionesSeleccionadasDeRasgo(rasgo, contexto, slot.subclase.nombre));
+
+    return [...opcionesDesdeClase, ...opcionesDesdeSubclase];  });
 
   return [...opcionesRaza, ...opcionesSubraza, ...opcionesClase];
 }
@@ -3619,9 +3677,15 @@ function contarRasgosPendientes(hastaNivel = personajeActual.nivel) {
   const pendientesClases = clasesActivas.reduce((total, slot) => {
     if (!slot.clase || slot.nivel <= 0) return total;
 
-    return total + (slot.clase.rasgos || [])
+    const contexto = `clase${slot.numeroSlot}`;
+    const pendientesClase = (slot.clase.rasgos || [])
       .filter(rasgo => (rasgo.nivelClase || 1) <= slot.nivel)
-      .reduce((subtotal, rasgo) => subtotal + contarPendientesDeRasgo(rasgo, `clase${slot.numeroSlot}`), 0);
+      .reduce((subtotal, rasgo) => subtotal + contarPendientesDeRasgo(rasgo, contexto), 0);
+    const pendientesSubclase = (slot.subclase?.rasgos || [])
+      .filter(rasgo => (rasgo.nivelClase || 1) <= slot.nivel)
+      .reduce((subtotal, rasgo) => subtotal + contarPendientesDeRasgo(rasgo, contexto), 0);
+
+    return total + pendientesClase + pendientesSubclase;
   }, 0);
 
   const pendientesSubraza = (subrazaElegida?.rasgos || [])
@@ -3755,7 +3819,10 @@ function renderNivelUnoBuild() {
   const rasgosSubraza = subrazaElegida?.rasgos || [];
   const rasgosClase = obtenerRasgosClasePorNivel(1, clasesActivas[0]);
   const nombreClase = clasesActivas[0]?.clase?.nombre || "Clase";
-
+  const rasgosSubclase = clasesActivas[0]?.subclase?.rasgos
+    ? clasesActivas[0].subclase.rasgos.filter(rasgo => (rasgo.nivelClase || 1) === 1)
+    : [];
+  const nombreSubclase = clasesActivas[0]?.subclase?.nombre || "—";
   return `
     <section class="build-nivel ${personajeActual.nivel === 1 ? "actual" : ""}">
       <h3>Nivel 1 · Identidad inicial</h3>
@@ -3786,7 +3853,8 @@ function renderNivelUnoBuild() {
         ${renderSeccionRasgosBuild(`Raza: ${razaElegida?.nombre || "—"}`, rasgosRaza, "raza")}
         ${renderSeccionRasgosBuild(`Subraza: ${subrazaElegida?.nombre || "—"}`, rasgosSubraza, "subraza")}
         ${renderSeccionRasgosBuild(`Clase: ${nombreClase}`, rasgosClase, "clase1")}
-      </div>
+        ${renderSeccionRasgosBuild(`Subclase: ${nombreSubclase}`, rasgosSubclase, "clase1")}
+        </div>
     </section>
   `;
 }
@@ -3798,6 +3866,8 @@ function renderNivelClaseBuild(nivel) {
   const valorPG = claseId ? obtenerValorPGNivel(nivel, claseId) : "";
   const nivelClase = claseId ? contarNivelClaseHastaNivelPersonaje(claseId, nivel) : 0;
   const rasgos = claseId ? obtenerRasgosClaseEnNivelPersonaje(nivel, claseId) : [];
+  const rasgosSubclase = claseId ? obtenerRasgosSubclaseEnNivelPersonaje(nivel, claseId) : [];
+  const slotClase = claseId ? obtenerSlotActivoPorClaseId(claseId) : null;
   const contextoClase = obtenerContextoClasePorId(claseId);
   const opcionesClase = `<option value="">Sin clase en este nivel</option>${renderOpcionesSeleccion(libroDeReglasBasicas.clases, claseId)}`;
 
@@ -3829,8 +3899,11 @@ function renderNivelClaseBuild(nivel) {
           ? (rasgos.length
             ? renderSeccionRasgosBuild(`${clase.nombre}: nivel de clase ${nivelClase}`, rasgos, contextoClase)
             : `<span class="build-rasgo">${textoSeguro(clase.nombre)} no desbloquea rasgos nuevos en su nivel de clase ${nivelClase}.</span>`)
-          : `<span class="build-rasgo">Selecciona una clase para este nivel.</span>`}
-      </div>
+            : `<span class="build-rasgo">Selecciona una clase para este nivel.</span>`}
+        ${slotClase?.subclase && rasgosSubclase.length
+          ? renderSeccionRasgosBuild(`Subclase: ${slotClase.subclase.nombre}`, rasgosSubclase, contextoClase)
+          : ""}
+            </div>
     </section>
   `;
 }
@@ -3861,7 +3934,10 @@ function actualizarResumenPersonaje() {
   const razaNombre = razaElegida?.nombre || personajeActual.raza || "Raza";
   const clasesTexto = clasesActivas
     .filter(slot => slot.clase && slot.nivel > 0)
-    .map(slot => `${slot.clase.nombre} ${slot.nivel}`)
+    .map(slot => {
+      const subclaseTexto = slot.subclase ? ` (${slot.subclase.nombre})` : "";
+      return `${slot.clase.nombre}${subclaseTexto} ${slot.nivel}`;
+    })
     .join(" / ") || "Clase 0";
 
   document.getElementById("nombre-personaje").innerText = personajeActual.nombre || "Sin nombre";
@@ -4008,7 +4084,9 @@ function conectarControlesBuild() {
   document.getElementById("buildClase")?.addEventListener("change", event => {
     if (personajeActual.clase1 === event.target.value) return;
     personajeActual.clase1 = event.target.value;
+    personajeActual.subclase1 = "";
     claseElegida = libroDeReglasBasicas.clases.find(c => c.id === personajeActual.clase1);
+    clasesActivas = obtenerSlotsClases();
     marcarPersonajeModificado();
     refrescarFichaTrasBuild();
     renderBuildPersonaje();

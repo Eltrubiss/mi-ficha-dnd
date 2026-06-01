@@ -421,13 +421,31 @@ let libroDeReglasBasicas = {
           `,
           rasgos: [
             {
-            nombre: "popipo"
-            }
+              nombre: "Crítico Mejorado",
+              nivelClase: 3,
+              descripcionResum: "Tus ataques de arma hacen crítico con 19 o 20.",
+              descripcion: `
+                Tus ataques de arma obtienen un golpe crítico con una tirada de 19 o 20 en el d20.
+              `            }
           ]
         },
         {
           id: "maestro_combate",
-          nombre: "Maestro de combate"
+          nombre: "Maestro de combate",
+          descripcionResum: "Dominas maniobras tácticas para controlar el combate.",
+          descripcion: `
+            Como Maestro de Combate, aprendes maniobras que convierten tu entrenamiento marcial en ventajas tácticas dentro y fuera del campo de batalla.
+          `,
+          rasgos: [
+            {
+              nombre: "Superioridad en Combate",
+              nivelClase: 3,
+              descripcionResum: "Obtienes dados de superioridad y maniobras de combate.",
+              descripcion: `
+                Aprendes maniobras especiales alimentadas por dados de superioridad. Puedes gastar estos dados para añadir efectos tácticos a tus ataques y acciones.
+              `
+            }
+          ]
         }
 
       ]
