@@ -35,6 +35,13 @@ const personajePorDefecto = {
   hpActual: 0,
   hpTemporales: 0,
   inspiracion: false,
+  concentracion: false,
+  estadosActivos: [],
+  monedas: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+  equipo: [],
+  inventarioEquipo: [],
+  sintonizacionSlots: 3,
+  sintonizados: [],
   eleccionesRasgos: {},
   progresionNiveles: {},
   pgPorNivel: {}
@@ -142,66 +149,6 @@ function normalizarListaEstados(estados) {
   return [...new Set(estados.map(estadoId => String(estadoId || "").trim()).filter(Boolean))];
 }
 
-function normalizarMonedas(monedas) {
-  const monedasBase = personajePorDefecto.monedas;
-  return Object.keys(monedasBase).reduce((resultado, moneda) => {
-    const cantidad = Number(monedas?.[moneda]);
-    resultado[moneda] = Number.isFinite(cantidad) ? Math.max(0, Math.floor(cantidad)) : monedasBase[moneda];
-    return resultado;
-  }, {});
-}
-
-function normalizarEntradaInventario(item) {
-  if (typeof item === "string") {
-    const id = item.trim();
-    return id ? { id, cantidad: 1, equipado: true } : null;
-  }
-
-  if (!item || typeof item !== "object") return null;
-
-  const id = String(item.id || "").trim();
-  const nombre = String(item.nombre || "").trim();
-  if (!id && !nombre) return null;
-
-  const cantidad = Number(item.cantidad);
-  return {
-    ...item,
-    ...(id ? { id } : {}),
-    ...(nombre ? { nombre } : {}),
-    cantidad: Number.isFinite(cantidad) && cantidad > 0 ? Math.floor(cantidad) : 1,
-    equipado: Boolean(item.equipado)
-  };
-}
-
-function normalizarInventario(inventario, equipoCompatible) {
-  const origenInventario = Array.isArray(inventario) ? inventario : [];
-  const inventarioNormalizado = origenInventario
-    .map(normalizarEntradaInventario)
-    .filter(Boolean);
-
-  if (inventarioNormalizado.length > 0 || !Array.isArray(equipoCompatible)) {
-    return inventarioNormalizado;
-  }
-
-  return equipoCompatible
-    .map(normalizarEntradaInventario)
-    .filter(Boolean);
-}
-
-function normalizarSintonizacion(sintonizacion) {
-  const slotsMax = Number(sintonizacion?.slotsMax);
-  return {
-    slotsMax: Number.isFinite(slotsMax) && slotsMax >= 0
-      ? Math.floor(slotsMax)
-      : personajePorDefecto.sintonizacion.slotsMax,
-    itemIds: normalizarListaEstados(sintonizacion?.itemIds)
-  };
-}
-
-function normalizarEquipoCompatible(equipo) {
-  return normalizarListaEstados(equipo);
-}
-
 function normalizarPersonaje(personaje) {
   const datos = clonarPersonaje(personaje || {});
   if (Object.prototype.hasOwnProperty.call(datos, "Inspiracion")
@@ -215,10 +162,11 @@ function normalizarPersonaje(personaje) {
     ...datos,
     concentracion: Boolean(datos.concentracion),
     estadosActivos: normalizarListaEstados(datos.estadosActivos),
-    equipo: normalizarEquipoCompatible(datos.equipo),
-    monedas: normalizarMonedas(datos.monedas),
-    inventario: normalizarInventario(datos.inventario, datos.equipo),
-    sintonizacion: normalizarSintonizacion(datos.sintonizacion),
+    monedas: normalizarMonedasPersonaje(datos.monedas),
+    equipo: normalizarListaIds(datos.equipo),
+    inventarioEquipo: normalizarInventarioEquipo(datos.inventarioEquipo),
+    sintonizacionSlots: Math.max(0, Number(datos.sintonizacionSlots ?? personajePorDefecto.sintonizacionSlots) || 0),
+    sintonizados: normalizarListaIds(datos.sintonizados),
     eleccionesRasgos: { ...(datos.eleccionesRasgos || {}) },
     progresionNiveles: { ...(datos.progresionNiveles || {}) },
     pgPorNivel: { ...(datos.pgPorNivel || {}) }
@@ -283,6 +231,69 @@ function crearIdPersonaje() {
   return `personaje-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+
+function normalizarListaIds(valores) {
+  if (!Array.isArray(valores)) return [];
+  return [...new Set(valores.map(valor => String(valor || "").trim()).filter(Boolean))];
+}
+
+function normalizarMonedasPersonaje(monedas) {
+  const base = { ...personajePorDefecto.monedas };
+  Object.entries(monedas || {}).forEach(([clave, valor]) => {
+    if (!Object.prototype.hasOwnProperty.call(base, clave)) return;
+    const cantidad = Math.floor(Number(valor));
+    base[clave] = Number.isFinite(cantidad) ? Math.max(0, cantidad) : 0;
+  });
+  return base;
+}
+function normalizarBonificacionesEquipo(bonificaciones) {
+  if (!Array.isArray(bonificaciones)) return [];
+  return bonificaciones.map(bono => ({
+    tipoDeEfecto: String(bono?.tipoDeEfecto || "bonoCA"),
+    valor: Number(bono?.valor) || 0,
+    statAfectada: String(bono?.statAfectada || ""),
+    habilidadAfectada: String(bono?.habilidadAfectada || ""),
+    categoria: String(bono?.categoria || "habilidad"),
+    competencia: String(bono?.competencia || bono?.valorCompetencia || "competencia")
+  })).filter(bono => bono.tipoDeEfecto);
+}
+
+function normalizarInventarioEquipo(items) {
+  if (!Array.isArray(items)) return [];
+  return items.map((item, indice) => ({
+    id: String(item?.id || `equipo-${Date.now()}-${indice}-${Math.random().toString(36).slice(2, 7)}`),
+    nombre: String(item?.nombre || "Objeto sin nombre"),
+    descripcion: String(item?.descripcion || ""),
+    precio: String(item?.precio || ""),
+    tipo: ["arma", "armadura", "equipo"].includes(item?.tipo) ? item.tipo : "equipo",
+    subtipo: String(item?.subtipo || ""),
+    equipado: item?.tipo === "arma" || item?.tipo === "armadura"
+      ? item?.equipado !== false
+      : Boolean(item?.equipado),
+    efectos: Array.isArray(item?.efectos) ? item.efectos.join("\n") : String(item?.efectos || ""),
+    etiquetas: Array.isArray(item?.etiquetas)
+      ? item.etiquetas.map(etiqueta => String(etiqueta || "").trim()).filter(Boolean)
+      : String(item?.etiquetas || "").split(",").map(etiqueta => etiqueta.trim()).filter(Boolean),
+    caBase: item?.caBase === undefined || item?.caBase === "" ? "" : Number(item.caBase),
+    destrezaCA: String(item?.destrezaCA || "usar"),
+    bonificadorExtra: Number(item?.bonificadorExtra) || 0,
+    tipoArma: String(item?.tipoArma || ""),
+    ataqueMod: String(item?.ataqueMod || "FUE"),
+    ataqueCompetencia: String(item?.ataqueCompetencia || "auto"),
+    ataqueBonificador: Number(item?.ataqueBonificador) || 0,
+    danoMod: String(item?.danoMod || "FUE"),
+    danoDado: String(item?.danoDado || ""),
+    danoTipo: String(item?.danoTipo || ""),
+    danoCritico: String(item?.danoCritico || ""),
+    danoModSecundario: String(item?.danoModSecundario || item?.danoMod || "FUE"),
+    danoDadoSecundario: String(item?.danoDadoSecundario || ""),
+    danoTipoSecundario: String(item?.danoTipoSecundario || ""),
+    danoCriticoSecundario: String(item?.danoCriticoSecundario || ""),
+    distancia: String(item?.distancia || ""),
+    bonificaciones: normalizarBonificacionesEquipo(item?.bonificaciones)
+    }));
+}
+
 function normalizarPersonajeGuardado(datos) {
   const datosCompatibles = clonarDatosPersonaje(datos);
   if (Object.prototype.hasOwnProperty.call(datosCompatibles, "Inspiracion")
@@ -294,6 +305,13 @@ function normalizarPersonajeGuardado(datos) {
   const datosNormalizados = {
     ...clonarDatosPersonaje(personajePorDefecto),
     ...datosCompatibles,
+    concentracion: Boolean(datosCompatibles.concentracion),
+    estadosActivos: normalizarListaEstados(datosCompatibles.estadosActivos),
+    monedas: normalizarMonedasPersonaje(datosCompatibles.monedas),
+    equipo: normalizarListaIds(datosCompatibles.equipo),
+    inventarioEquipo: normalizarInventarioEquipo(datosCompatibles.inventarioEquipo),
+    sintonizacionSlots: Math.max(0, Number(datosCompatibles.sintonizacionSlots ?? personajePorDefecto.sintonizacionSlots) || 0),
+    sintonizados: normalizarListaIds(datosCompatibles.sintonizados),
     eleccionesRasgos: {
       ...clonarDatosPersonaje(personajePorDefecto.eleccionesRasgos),
       ...clonarDatosPersonaje(datosCompatibles.eleccionesRasgos)
@@ -617,7 +635,7 @@ function calcularPuntosGolpeMaximos() {
   if (claseNivel1) {
     const valorNivel1 = Math.max(1, claseNivel1.dadoDeGolpe + modCON);
     total += valorNivel1;
-    items.push({ origen: `${claseNivel1.nombre} nivel 1`, valor: valorNivel1, descripcion: `${claseNivel1.dadoDeGolpe} dado máximo + ${modCON} CON` });
+    items.push({ origen: `${claseNivel1.nombre} nivel de clase 1`, valor: valorNivel1, descripcion: `${claseNivel1.dadoDeGolpe} PG de dado máximo + ${modCON} CON` });
   }
 
   for (let nivel = 2; nivel <= 20; nivel++) {
@@ -628,7 +646,7 @@ function calcularPuntosGolpeMaximos() {
     const tirada = obtenerValorPGNivel(nivel, claseId);
     const valorNivel = Math.max(1, tirada + modCON);
     total += valorNivel;
-    items.push({ origen: `Nivel ${nivel} (${clase.nombre})`, valor: valorNivel, descripcion: `${tirada} PG de dado + ${modCON} CON` });
+    items.push({ origen: `${clase.nombre} nivel de clase ${contarNivelClaseHastaNivelPersonaje(claseId, nivel)} (personaje nivel ${nivel})`, valor: valorNivel, descripcion: `${tirada} PG de dado + ${modCON} CON` });
   }
 
   return { total, items };
@@ -655,10 +673,17 @@ sincronizarNivelPersonajeDesdeClases();
 let personajeConBonos = { ...personajeActual };
 
 const detalleEstadisticas = {
+  FUE: { total: 0, items: [] },
+  DES: { total: 0, items: [] },
+  CON: { total: 0, items: [] },
+  INT: { total: 0, items: [] },
+  SAB: { total: 0, items: [] },
+  CAR: { total: 0, items: [] },
   PG: { total: 0, items: [] },
   Velocidad: { total: 0, items: [] },
   Iniciativa: { total: 0, items: [] },
-  CA: { total: 0, items: [] }
+  CA: { total: 0, items: [] },
+  Competencia: { total: 0, items: []}
 };
 
 let claseElegida = libroDeReglasBasicas.clases.find(c => c.id === personajeActual.clase1);
@@ -707,10 +732,98 @@ function obtenerBonoRacialStat(statId) {
     + obtenerBonoStatDesdeRasgos(subrazaElegida?.rasgos, statId);
 }
 
+function obtenerTiposEfectoCompatibles(tipoDeEfecto) {
+  const equivalencias = {
+    velocidad: ["velocidad", "bono_velocidad"],
+    bonoCA: ["bonoCA", "bonifCA"],
+    iniciativa: ["iniciativa"],
+    bono_stat: ["bono_stat"]
+  };
+  return equivalencias[tipoDeEfecto] || [tipoDeEfecto];
+}
+
+
+function obtenerRasgosEquipoPersonalizado() {
+  return normalizarInventarioEquipo(personajeActual?.inventarioEquipo || [])
+    .filter(item => item.tipo === "equipo" || item.equipado)
+    .filter(item => item.bonificaciones.length > 0)
+    .map(item => {
+      const efectos = item.tipo === "armadura"
+        ? item.bonificaciones.filter(bono => !["bonoCA", "bonifCA"].includes(bono.tipoDeEfecto))
+        : [...item.bonificaciones];
+      return {
+        nombre: item.nombre,
+        origen: "Equipo",
+        descripcionResum: item.descripcion || "Bonificador configurado desde la ventana de Equipo",
+        efectos
+      };
+    });
+}
+
+function obtenerRasgosConOrigenParaDetalles() {
+  return [
+    ...(razaElegida?.rasgos || []).map(rasgo => ({ ...rasgo, origen: razaElegida.nombre })),
+    ...(subrazaElegida?.rasgos || []).map(rasgo => ({ ...rasgo, origen: subrazaElegida.nombre })),
+    ...obtenerRasgosDeClasesDisponibles(),
+    ...obtenerOpcionesSeleccionadasDisponibles(),
+    ...obtenerRasgosEquipoPersonalizado()
+  ];
+}
+
+function obtenerValorEfecto(efecto) {
+  return efecto?.valor || efecto?.valorDelBono || 0;
+}
+
+function obtenerDetallesEfectos(tipoDeEfecto, propiedadFiltro = null, valorFiltro = null) {
+  const tiposCompatibles = obtenerTiposEfectoCompatibles(tipoDeEfecto);
+  return obtenerRasgosConOrigenParaDetalles().flatMap(rasgo => (rasgo.efectos || [])
+    .filter(efecto => tiposCompatibles.includes(efecto.tipoDeEfecto))
+    .filter(efecto => !propiedadFiltro || efecto[propiedadFiltro] === valorFiltro)
+    .filter(efecto => seCumpleCondicion(efecto.condicion, estado))
+    .map(efecto => ({
+      origen: `${rasgo.nombre} de ${rasgo.origen || "rasgos"}`,
+      valor: obtenerValorEfecto(efecto),
+      descripcion: efecto.descripcion || `Efecto ${efecto.tipoDeEfecto}`
+    })));
+}
+
+function sumarDetallesEfectos(detalles) {
+  return detalles.reduce((total, item) => total + (Number(item.valor) || 0), 0);
+}
+
+function actualizarDetalleCaracteristicas() {
+  ESTADISTICAS_PRINCIPALES.forEach(({ id, nombre }) => {
+    const base = Number(personajeActual[id]) || 0;
+    const detallesBonos = obtenerDetallesEfectos("bono_stat", "statAfectada", id);
+    const total = base + sumarDetallesEfectos(detallesBonos);
+    detalleEstadisticas[id] = {
+      total,
+      items: [
+        { origen: `${nombre} base del personaje`, valor: base, descripcion: "Valor asignado en la ficha" },
+        ...detallesBonos
+      ]
+    };
+  });
+}
+
+function actualizarDetalleCompetencia() {
+  const nivelTotal = personajeActual.nivel || 1;
+  const total = calcularBonificadorCompetencia(nivelTotal);
+  detalleEstadisticas.Competencia = {
+    total,
+    items: [{
+      origen: `Nivel total ${nivelTotal}`,
+      valor: total,
+      descripcion: "Bonificador de competencia según el nivel total del personaje"
+    }]
+  };
+}
+
 function calcularPersonajeConBonos() {
   const personajeCalculado = { ...personajeActual };
   ESTADISTICAS_PRINCIPALES.forEach(({ id }) => {
-    personajeCalculado[id] = (Number(personajeActual[id]) || 0) + obtenerBonoRacialStat(id);
+    personajeCalculado[id] = (Number(personajeActual[id]) || 0)
+      + sumarDetallesEfectos(obtenerDetallesEfectos("bono_stat", "statAfectada", id));
   });
   return personajeCalculado;
 }
@@ -732,6 +845,7 @@ function actualizarVariablesModificadores() {
 }
 
 function actualizarValoresEstadisticasEnFicha() {
+  actualizarDetalleCaracteristicas();
   ESTADISTICAS_PRINCIPALES.forEach(({ id }) => {
     const valorElemento = document.getElementById(id);
     const modificadorElemento = document.getElementById(`mod-${id}`);
@@ -779,22 +893,14 @@ function actualizarResumenEstadisticasBuild() {
 }
 
 function actualizarIniciativa() {
-  const bonoIniciativaActual = sumaDeEfectos("iniciativa", efectos, estado);
-  const iniciativaActual = modDES + bonoIniciativaActual;
+  const detallesIniciativa = obtenerDetallesEfectos("iniciativa");
+  const iniciativaActual = modDES + sumarDetallesEfectos(detallesIniciativa);
   detalleEstadisticas.Iniciativa.total = iniciativaActual;
   detalleEstadisticas.Iniciativa.items = [{
-    origen: "Modificador de Destreza",
+    origen: "Modificador de Destreza del personaje",
     valor: modDES,
-    descripcion: "Destreza final"
-  }];
-
-  if (bonoIniciativaActual) {
-    detalleEstadisticas.Iniciativa.items.push({
-      origen: "Bonos de iniciativa",
-      valor: bonoIniciativaActual,
-      descripcion: "Rasgos que añaden iniciativa"
-    });
-  }
+    descripcion: "Modificador de la Destreza final"
+  }, ...detallesIniciativa];
 
   const iniciativaElemento = document.getElementById("Ini");
   if (iniciativaElemento) iniciativaElemento.innerText = formatoValor(iniciativaActual);
@@ -821,14 +927,16 @@ refrescarEstadisticasPersonaje();
 ///////////////////////////////////////////////////////////////////
 document.getElementById("nombre-personaje").innerText = personajeActual.nombre;
 document.getElementById("info-personaje").innerText = personajeActual.raza + ", " + personajeActual.clase1 + " " + personajeActual.nivel;
-document.getElementById("BC").innerText = "+" + bonifCompetencia;
-
+actualizarDetalleCompetencia();
+document.getElementById("BC").innerText = formatoValor(bonifCompetencia);
 ////////////////////// || RASGOS || ///////////////////////////////////
 function seCumpleCondicion(condicion, estado) {
   if (!condicion) return true;
-  if (condicion.sinArmadura && !estado.sinArmadura) return false;
-  if (condicion.sinEscudo && !estado.sinEscudo) return false;
-  if (condicion.conArmadura && !estado.usaArmadura) return false;
+  const tieneArmaduraEquipada = Boolean(estado.usaArmadura || obtenerArmaduraPersonalizadaEquipada());
+  const tieneEscudoEquipado = Boolean(estado.usaEscudo || obtenerEscudosPersonalizadosEquipados().length);
+  if (condicion.sinArmadura && tieneArmaduraEquipada) return false;
+  if (condicion.sinEscudo && tieneEscudoEquipado) return false;
+  if ((condicion.conArmadura || condicion.usaArmadura) && !tieneArmaduraEquipada) return false;
   return true;
 }
 
@@ -853,12 +961,15 @@ function obtenerRasgosDeClasesDisponibles() {
 }
 
 function sumaEfectosDeRasgos(rasgos, tipoDeEfecto, propiedadFiltro = null, valorFiltro = null) {
+  const tiposCompatibles = obtenerTiposEfectoCompatibles(tipoDeEfecto);
   let total = 0;
 
   rasgos.forEach(rasgo => {
     (rasgo.efectos || []).forEach(efecto => {
-      if (efecto.tipoDeEfecto === tipoDeEfecto && (!propiedadFiltro || efecto[propiedadFiltro] === valorFiltro)) {
-        total += efecto.valor || efecto.valorDelBono || 0;
+      if (tiposCompatibles.includes(efecto.tipoDeEfecto)
+          && (!propiedadFiltro || efecto[propiedadFiltro] === valorFiltro)
+          && seCumpleCondicion(efecto.condicion, estado)) {
+        total += obtenerValorEfecto(efecto);
       }
     });
   });
@@ -879,9 +990,9 @@ let total = 0;
         razaElegida.rasgos.forEach(rasgo => {
             if (rasgo.efectos) {
                 rasgo.efectos.forEach(efecto => {
-                    if (efecto.tipoDeEfecto === tipoDeEfecto) {
+                    if (obtenerTiposEfectoCompatibles(tipoDeEfecto).includes(efecto.tipoDeEfecto) && seCumpleCondicion(efecto.condicion, estado)) {
                         if (!propiedadFiltro || efecto[propiedadFiltro] === valorFiltro) {
-                            total += efecto.valor || efecto.valorDelBono || 0;
+                            total += obtenerValorEfecto(efecto);
                         }
                     }
                 });
@@ -895,12 +1006,12 @@ let total = 0;
             if (rasgo.efectos) {
                 rasgo.efectos.forEach(efecto => {
                   console.log(`COMPARANDO: El sistema busca [${tipoDeEfecto}] y el rasgo tiene [${efecto.tipoDeEfecto}]`);
-                    if (efecto.tipoDeEfecto === tipoDeEfecto) {
+                    if (obtenerTiposEfectoCompatibles(tipoDeEfecto).includes(efecto.tipoDeEfecto) && seCumpleCondicion(efecto.condicion, estado)) {
                       console.log("5. Encontré un efecto del tipo que busco en la subraza:", efecto);
                         // Filtramos si requiere alguna propiedad específica (como la stat afectada)
                         if (!propiedadFiltro || efecto[propiedadFiltro] === valorFiltro) {
                             // Sumamos el valor del bono (soportando ambas nomenclaturas que usas)
-                            total += efecto.valor || efecto.valorDelBono || 0;
+                            total += obtenerValorEfecto(efecto);
                             console.log(`6. Sumando bono de subraza ${subrazaElegida.nombre}:`, efecto.valor || efecto.valorDelBono || 0, "Total actual:", total);
                         }
                     }
@@ -915,39 +1026,12 @@ let total = 0;
     return total;
 }
 function buscarEfecto(tipoDeEfecto) {
-    let efectoEncontrado = null;
-
-    // --- 1. BUSCAR EN RAZA ---
-    if (razaElegida && razaElegida.rasgos) {
-        razaElegida.rasgos.forEach(rasgo => {
-            if (rasgo.efectos) {
-                let ef = rasgo.efectos.find(e => e.tipoDeEfecto === tipoDeEfecto);
-                if (ef) efectoEncontrado = ef;
-            }
-        });
-    }
-    if (efectoEncontrado) return efectoEncontrado;
-
-    // --- BUSCAR EN SUBRAZA ---
-    if (subrazaElegida && subrazaElegida.rasgos) {
-        subrazaElegida.rasgos.forEach(rasgo => {
-            if (rasgo.efectos) {
-                let ef = rasgo.efectos.find(e => e.tipoDeEfecto === tipoDeEfecto);
-                if (ef) efectoEncontrado = ef;
-            }
-        });
-    }
-    if (efectoEncontrado) return efectoEncontrado;
-
-    // --- 3. BUSCAR EN CLASES ACTIVAS Y OPCIONES SELECCIONADAS ---
-    [...obtenerRasgosDeClasesDisponibles(), ...obtenerOpcionesSeleccionadasDisponibles()].forEach(rasgo => {
-        if (rasgo.efectos) {
-            let ef = rasgo.efectos.find(e => e.tipoDeEfecto === tipoDeEfecto);
-            if (ef) efectoEncontrado = { ...ef, nombre: rasgo.nombre, origen: rasgo.origen };
-        }
-    });
-
-    return efectoEncontrado;
+  const tiposCompatibles = obtenerTiposEfectoCompatibles(tipoDeEfecto);
+  for (const rasgo of obtenerRasgosConOrigenParaDetalles()) {
+    const efecto = (rasgo.efectos || []).find(ef => tiposCompatibles.includes(ef.tipoDeEfecto));
+    if (efecto) return { ...efecto, nombre: rasgo.nombre, origen: rasgo.origen };
+  }
+  return null;
 }
 
 
@@ -961,20 +1045,13 @@ const iniciativaTotal = modDES + bonoIniciativa;
 ///////////////////// CÁLCULO DE PUNTOS DE GOLPE /////////////////////
 actualizarPuntosGolpe();
 ///////////////////// CÁLCULO DE INICIATIVA /////////////////////
+const detallesIniciativaInicial = obtenerDetallesEfectos("iniciativa");
 detalleEstadisticas.Iniciativa.total = iniciativaTotal;
-detalleEstadisticas.Iniciativa.items.push({
-  origen: "Modificador de Destreza",
+detalleEstadisticas.Iniciativa.items = [{
+  origen: "Modificador de Destreza del personaje",
   valor: modDES,
-  descripcion: "Destreza final"
-});
-
-if (bonoIniciativa) {
-  detalleEstadisticas.Iniciativa.items.push({
-    origen: "Bonos de iniciativa",
-    valor: bonoIniciativa,
-    descripcion: "Rasgos que añaden iniciativa"
-  });
-}
+  descripcion: "Modificador de la Destreza final"
+}, ...detallesIniciativaInicial];
 
 if (iniciativaTotal >= 0) {
     document.getElementById("Ini").innerText = "+" + iniciativaTotal;
@@ -986,14 +1063,36 @@ if (iniciativaTotal >= 0) {
 
 ///////////////////// Popup de Estadísticas /////////////////////
 function formatoValor(valor) {
-  if (typeof valor !== "number" || Number.isNaN(valor)) return valor;
-  return valor >= 0 ? "+" + valor : String(valor);
+  const numero = typeof valor === "number" ? valor : Number(valor);
+  if (!Number.isFinite(numero)) return valor;
+  return numero >= 0 ? "+" + numero : String(numero);
+}
+
+function obtenerClaveDetalleEstadistica(clave) {
+  const equivalencias = { Vel: "Velocidad", Ini: "Iniciativa", BC: "Competencia" };
+  return equivalencias[clave] || clave;
+}
+
+function obtenerTituloDetalleEstadistica(clave) {
+  const titulos = {
+    FUE: "Fuerza",
+    DES: "Destreza",
+    CON: "Constitución",
+    INT: "Inteligencia",
+    SAB: "Sabiduría",
+    CAR: "Carisma",
+    PG: "Puntos de Golpe",
+    CA: "Clase de Armadura",
+    Competencia: "Bonificador de Competencia"
+  };
+  return titulos[clave] || clave;
 }
 
 function renderPopupEstadisticas(detalle, clave) {
   const contenido = document.getElementById("popupContenido");
-  const entradas = clave && Object.prototype.hasOwnProperty.call(detalle, clave)
-    ? [[clave, detalle[clave]]]
+  const claveDetalle = obtenerClaveDetalleEstadistica(clave);
+  const entradas = claveDetalle && Object.prototype.hasOwnProperty.call(detalle, claveDetalle)
+    ? [[claveDetalle, detalle[claveDetalle]]]
     : Object.entries(detalle);
 
   contenido.innerHTML = entradas
@@ -1009,7 +1108,7 @@ function renderPopupEstadisticas(detalle, clave) {
 
       return `
         <section class="popup-seccion">
-          <h3>${titulo} — Total ${formatoValor(data.total)}</h3>
+          <h3>${obtenerTituloDetalleEstadistica(titulo)} — Total ${formatoValor(data.total)}</h3>
           ${itemsHtml}
         </section>
       `;
@@ -1028,25 +1127,22 @@ function cerrarPopupEstadisticas() {
 /////////////////////////////////////////////////////////////////
 
 ///////////////////// CÁLCULO DE VELOCIDAD /////////////////////
-if (razaElegida) {
-  let velocidadBase = razaElegida.velocidad;
-  let velocidadTotal = velocidadBase + bonoVelocidad;
+function actualizarVelocidad() {
+  if (!razaElegida) return;
+  const velocidadBase = razaElegida.velocidad || 0;
+  const detallesVelocidad = obtenerDetallesEfectos("velocidad");
+  const velocidadTotal = velocidadBase + sumarDetallesEfectos(detallesVelocidad);
 
   detalleEstadisticas.Velocidad.total = velocidadTotal;
-  detalleEstadisticas.Velocidad.items.push(
-    { origen: "Velocidad base", valor: velocidadBase, descripcion: "Velocidad de la raza" }
-  );
-
-  if (bonoVelocidad) {
-    detalleEstadisticas.Velocidad.items.push({
-      origen: "Bonos de velocidad",
-      valor: bonoVelocidad,
-      descripcion: "Rasgos u objetos"
-    });
-  }
+  detalleEstadisticas.Velocidad.items = [
+    { origen: `Velocidad de ${razaElegida.nombre}`, valor: velocidadBase, descripcion: "Velocidad base de la raza" },
+    ...detallesVelocidad
+  ];
 
   document.getElementById("Vel").innerText = velocidadTotal;
 }
+
+actualizarVelocidad();
 
 ////////////////////// RENDERIZADO DE PUNTOS DE GOLPE /////////////////////
 function renderVida() {
@@ -1076,21 +1172,120 @@ function renderVida() {
 
   document.getElementById("chkInspiracion").checked =
     Boolean(personajeActual.inspiracion);
-}
+  document.getElementById("chkConcentracion").checked =
+    Boolean(personajeActual.concentracion);
+  renderAtaquesCombate();
+ }
 function guardarEstadoVida() {
   const estado = {
     hpActual: personajeActual.hpActual,
     hpTemporales: personajeActual.hpTemporales,
-    inspiracion: personajeActual.inspiracion
+    inspiracion: personajeActual.inspiracion,
+    concentracion: personajeActual.concentracion,
+    estadosActivos: personajeActual.estadosActivos
   };
   escribirJsonLocalStorage("creadorDndPersonaje", estado);
   marcarPersonajeModificado();
 }
+
+function escaparHtml(valor) {
+  return String(valor ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function obtenerEstadosLibroReglas() {
+  return Array.isArray(libroDeReglasBasicas.estados) ? libroDeReglasBasicas.estados : [];
+}
+
+function obtenerEstadoPorId(estadoId) {
+  return obtenerEstadosLibroReglas().find(estadoRegla => estadoRegla.id === estadoId);
+}
+
+function renderSelectorEstados() {
+  const selector = document.getElementById("selectEstado");
+  if (!selector) return;
+
+  const estadosActivos = new Set(personajeActual.estadosActivos || []);
+  const opciones = obtenerEstadosLibroReglas()
+    .filter(estadoRegla => !estadosActivos.has(estadoRegla.id))
+    .map(estadoRegla => `<option value="${escaparHtml(estadoRegla.id)}">${escaparHtml(estadoRegla.nombre)}</option>`)
+    .join("");
+
+  selector.innerHTML = `<option value="">Agregar estado...</option>${opciones}`;
+}
+
+function renderEstadosActivos() {
+  const contenedor = document.getElementById("estadoTags");
+  if (!contenedor) return;
+
+  const estadosActivos = normalizarListaEstados(personajeActual.estadosActivos);
+  personajeActual.estadosActivos = estadosActivos;
+
+  if (!estadosActivos.length) {
+    contenedor.innerHTML = '<p class="estado-tags-vacio">Sin estados activos.</p>';
+    renderSelectorEstados();
+    return;
+  }
+
+  contenedor.innerHTML = estadosActivos
+    .map(estadoId => obtenerEstadoPorId(estadoId))
+    .filter(Boolean)
+    .map(estadoRegla => `
+      <span class="estado-tag">
+        <button class="estado-tag-quitar" type="button" data-estado-quitar="${escaparHtml(estadoRegla.id)}" aria-label="Quitar ${escaparHtml(estadoRegla.nombre)}">×</button>
+        <button class="estado-tag-nombre" type="button" data-estado-abrir="${escaparHtml(estadoRegla.id)}">${escaparHtml(estadoRegla.nombre)}</button>
+      </span>
+    `)
+    .join("");
+
+  renderSelectorEstados();
+}
+
+function agregarEstadoActivo(estadoId) {
+  if (!obtenerEstadoPorId(estadoId)) return;
+  const estadosActivos = normalizarListaEstados(personajeActual.estadosActivos);
+  if (!estadosActivos.includes(estadoId)) {
+    personajeActual.estadosActivos = [...estadosActivos, estadoId];
+    guardarEstadoVida();
+    renderEstadosActivos();
+  }
+}
+
+function quitarEstadoActivo(estadoId) {
+  const estadosActualizados = normalizarListaEstados(personajeActual.estadosActivos)
+    .filter(estadoActivoId => estadoActivoId !== estadoId);
+  if (estadosActualizados.length !== (personajeActual.estadosActivos || []).length) {
+    personajeActual.estadosActivos = estadosActualizados;
+    guardarEstadoVida();
+    renderEstadosActivos();
+  }
+}
+
+function abrirPopupEstado(estadoId) {
+  const estadoRegla = obtenerEstadoPorId(estadoId);
+  if (!estadoRegla) return;
+
+  const contenido = document.getElementById("popup-estado-contenido");
+  contenido.innerHTML = `
+    <h2>${escaparHtml(estadoRegla.nombre)}</h2>
+    <p>${escaparHtml(estadoRegla.descripcion)}</p>
+  `;
+  document.getElementById("popup-estado").classList.remove("oculto");
+}
+
+function cerrarPopupEstado() {
+  document.getElementById("popup-estado").classList.add("oculto");
+}
 function aplicarCuracion(valor) {
+  const hpAnterior = personajeActual.hpActual;
   const hpMax = detalleEstadisticas.PG.total;
   personajeActual.hpActual = Math.min(
     hpMax,
-    personajeActual.hpActual + valor
+    personajeActual.hpActual + Math.max(0, valor)
   );
   if (personajeActual.hpActual !== hpAnterior) guardarEstadoVida();
   renderVida();
@@ -1124,14 +1319,14 @@ function aplicarTemporales(valor) {
   renderVida();
 }
 
-function aplicarTemporales(valor) {
-  personajeActual.hpTemporales = Math.max(0, valor);
+function alternarInspiracion() {
+  personajeActual.inspiracion = !personajeActual.inspiracion;
   guardarEstadoVida();
   renderVida();
 }
 
-function alternarInspiracion() {
-  personajeActual.inspiracion = !personajeActual.inspiracion;
+function alternarConcentracion() {
+  personajeActual.concentracion = !personajeActual.concentracion;
   guardarEstadoVida();
   renderVida();
 }
@@ -1156,7 +1351,30 @@ document.getElementById("btnTemporales")
 document.getElementById("chkInspiracion")
   .addEventListener("change", alternarInspiracion);
 
+document.getElementById("chkConcentracion")
+  .addEventListener("change", alternarConcentracion);
+
+document.getElementById("btnAgregarEstado")
+  .addEventListener("click", () => {
+    const selector = document.getElementById("selectEstado");
+    agregarEstadoActivo(selector.value);
+    selector.value = "";
+  });
+
+document.getElementById("estadoTags")
+  .addEventListener("click", evento => {
+    const botonQuitar = evento.target.closest("[data-estado-quitar]");
+    if (botonQuitar) {
+      quitarEstadoActivo(botonQuitar.dataset.estadoQuitar);
+      return;
+    }
+
+    const botonAbrir = evento.target.closest("[data-estado-abrir]");
+    if (botonAbrir) abrirPopupEstado(botonAbrir.dataset.estadoAbrir);
+  });
+
 renderVida();
+renderEstadosActivos();
 ///////////////////// ARMADURAS /////////////////////
 const { caTotal, textoArmadura, detalle } = calcularCA(
   personajeConBonos,
@@ -1185,13 +1403,52 @@ function calcularCADesdeEfecto(personaje, efecto) {
   return total;
 }
 
+function obtenerArmaduraPersonalizadaEquipada() {
+  return normalizarInventarioEquipo(personajeActual.inventarioEquipo)
+    .find(item => item.tipo === "armadura" && item.equipado && !esEscudoEquipo(item) && Number(item.caBase));
+}
+
+function obtenerEscudosPersonalizadosEquipados() {
+  return normalizarInventarioEquipo(personajeActual.inventarioEquipo)
+    .filter(item => item.tipo === "armadura" && item.equipado && esEscudoEquipo(item));
+}
+
 function calcularCA(personaje, armaduraElegida, claseElegida, razaElegida, equipo, estado) {
   const modDES = calcularModificadorNumero(personaje.DES);
+  const armaduraPersonalizada = obtenerArmaduraPersonalizadaEquipada();
+  const armaduraActiva = armaduraPersonalizada || armaduraElegida;
   let caTotal;
   let textoArmadura = "Armadura natural";
   const detalle = [];
 
-  if (armaduraElegida) {
+  if (armaduraActiva) {
+    textoArmadura = armaduraActiva.nombre;
+
+    if (armaduraPersonalizada) {
+      const base = Number(armaduraPersonalizada.caBase) || 0;
+      const modArmadura = obtenerModificadorCAArmadura(armaduraPersonalizada);
+      const bonificador = obtenerBonificadorCAItem(armaduraPersonalizada);
+      caTotal = base + modArmadura + bonificador;
+      detalle.push({
+        origen: armaduraPersonalizada.nombre,
+        valor: base,
+        descripcion: "CA base de armadura equipada"
+      });
+      if (armaduraPersonalizada.destrezaCA !== "no") {
+        detalle.push({
+          origen: "Modificador de Destreza",
+          valor: modArmadura,
+          descripcion: describirDestrezaCA(armaduraPersonalizada.destrezaCA)
+        });
+      }
+      if (bonificador) {
+        detalle.push({
+          origen: `Bonificadores de ${armaduraPersonalizada.nombre}`,
+          valor: bonificador,
+          descripcion: "Bonificadores configurados en la armadura"
+        });
+      }
+    } else if (armaduraElegida) {  
     textoArmadura = armaduraElegida.nombre;
 
     if (armaduraElegida.tipo === "ligera") {
@@ -1227,6 +1484,7 @@ function calcularCA(personaje, armaduraElegida, claseElegida, razaElegida, equip
         descripcion: "Base de armadura pesada"
       });
     }
+    }
   } else {
     let efectoCa = buscarEfecto("caSinArmadura");
 
@@ -1234,7 +1492,7 @@ function calcularCA(personaje, armaduraElegida, claseElegida, razaElegida, equip
       caTotal = calcularCADesdeEfecto(personaje, efectoCa);
       textoArmadura = efectoCa.nombre || "Defensa sin Armadura";
       detalle.push({
-        origen: efectoCa.nombre + " de " + (claseElegida?.nombre || razaElegida?.nombre)  || "Defensa sin Armadura",
+        origen: `${efectoCa.nombre || "Defensa sin Armadura"} de ${efectoCa.origen || claseElegida?.nombre || razaElegida?.nombre || "rasgos"}`,
         valor: caTotal,
         descripcion: efectoCa.base + " + " + (efectoCa.modificadores || []).join(" + ")
       });
@@ -1248,14 +1506,11 @@ function calcularCA(personaje, armaduraElegida, claseElegida, razaElegida, equip
     }
   }
 
-  const bonoCARaza = sumaDeEfectos("bonoCA", [claseElegida, razaElegida], estado);
-  if (bonoCARaza) {
-    caTotal += bonoCARaza;
-    detalle.push({
-      origen: "Bonos de CA de rasgos",
-      valor: bonoCARaza,
-      descripcion: "Rasgos que añaden CA"
-    });
+  const detallesBonoCA = obtenerDetallesEfectos("bonoCA");
+  const bonoCARasgos = sumarDetallesEfectos(detallesBonoCA);
+  if (bonoCARasgos) {
+    caTotal += bonoCARasgos;
+    detalle.push(...detallesBonoCA);
   }
 
   const bonoCAEquip = equipo
@@ -1275,17 +1530,21 @@ function calcularCA(personaje, armaduraElegida, claseElegida, razaElegida, equip
     });
   }
 
+    const escudosPersonalizados = obtenerEscudosPersonalizadosEquipados();
+  const bonoEscudosPersonalizados = escudosPersonalizados.reduce((total, item) => total + obtenerBonificadorCAItem(item), 0);
+  if (bonoEscudosPersonalizados) {
+    caTotal += bonoEscudosPersonalizados;
+    detalle.push({
+      origen: "Bonos de " + escudosPersonalizados.map(item => item.nombre).join(", "),
+      valor: bonoEscudosPersonalizados,
+      descripcion: "Bonos de CA de escudos personalizados equipados"
+    });
+  }
+
   return { caTotal, textoArmadura, detalle };
 }
 
-["PG", "Vel", "Ini", "CA"].forEach(id => {
-  const element = document.getElementById(id);
-  if (element && element.parentElement) {
-    element.parentElement.addEventListener("click", () => abrirPopupEstadisticas(id));
-  }
-});
-
-document.querySelectorAll(".caja-stat.clickable").forEach(box => {
+document.querySelectorAll("[data-popup-key]").forEach(box => {
   const popupKey = box.dataset.popupKey;
   if (popupKey) {
     box.addEventListener("click", () => abrirPopupEstadisticas(popupKey));
@@ -1322,7 +1581,8 @@ function obtenerFuentesConEfectos() {
     ...(razaElegida?.rasgos || []).map(rasgo => ({ ...rasgo, origen: razaElegida.nombre })),
     ...(subrazaElegida?.rasgos || []).map(rasgo => ({ ...rasgo, origen: subrazaElegida.nombre })),
     ...obtenerRasgosDeClasesDisponibles(),
-    ...obtenerOpcionesSeleccionadasDisponibles()
+    ...obtenerOpcionesSeleccionadasDisponibles(),
+    ...obtenerRasgosEquipoPersonalizado()
   ];
 }
 
@@ -1461,9 +1721,9 @@ function obtenerHabilidadesElegidasDesdeRasgos() {
 function obtenerHabilidadesDesdeEfectos() {
   return obtenerFuentesConEfectos().flatMap(rasgo => (rasgo.efectos || [])
     .filter(efecto => (
-      efecto.tipoDeEfecto === "bono_habilidad"
+      ((efecto.tipoDeEfecto === "bono_habilidad" && !efectoTieneCondicionCompetencia(efecto))
+        || efecto.tipoDeEfecto === "competencia")
       && efecto.habilidadAfectada
-      && !efectoTieneCondicionCompetencia(efecto)
     ))
     .map(efecto => efecto.habilidadAfectada));
 }
@@ -1635,7 +1895,53 @@ let listaSeleccionesBuildActuales = [];
 function renderRasgos() {
     listaRasgosActuales = [];
     let contadorId = 0;
-    
+
+    const limpiarResumenFicha = rasgo => resumenRasgo(rasgo).replace(/<br>|###|\*\*/g, "");
+
+    const renderTarjetaRasgoFicha = (rasgo, origen, tituloExtra = "", claseExtra = "") => {
+        const indice = contadorId;
+        const usarFormatoBuild = claseExtra.includes("rasgo-seleccionado-ficha");
+        const claseTarjeta = usarFormatoBuild ? "build-rasgo-card" : "rasgo-tarjeta-boton";
+        const claseTitulo = usarFormatoBuild ? "build-rasgo-card-titulo" : "rasgo-tarjeta-titulo";
+        const claseResumen = usarFormatoBuild ? "build-rasgo-card-resumen" : "rasgo-tarjeta-resumen";
+        listaRasgosActuales.push({ ...rasgo, origen });
+        contadorId++;
+
+        return `
+            <div class="${claseExtra}">
+                <div class="${claseTarjeta}" onclick="abrirPopupRasgo(${indice})">
+                    <div class="${claseTitulo}">
+                        ${textoSeguro(rasgo.nombre)} ${tituloExtra}
+                    </div>
+                    <div class="${claseResumen}">${textoSeguro(limpiarResumenFicha(rasgo))}</div>
+                </div>
+            </div>
+        `;
+    };
+
+    const opcionElegidaEsRasgo = opcion => Boolean(
+        opcion
+        && (
+            opcion.descripcion
+            || opcion.descripcionResum
+            || Array.isArray(opcion.efectos)
+            || Array.isArray(opcion.selecciones)
+        )
+    );
+
+    const renderRasgosElegidosPorSeleccion = (rasgo, contexto, origen) => {
+        const opcionesElegidas = obtenerOpcionesSeleccionadasDeRasgo(rasgo, contexto, origen)
+            .filter(opcionElegidaEsRasgo);
+
+        return opcionesElegidas
+            .map(opcion => renderTarjetaRasgoFicha(
+                opcion,
+                `${origen} — ${rasgo.nombre}`,
+                "",
+                "rasgo-seleccionado-ficha"
+            ))
+            .join("");
+    };
     let html = `
         <h2 class="titulo-panel">Rasgos y Atributos</h2>
         <div class="rasgos-contenedor-scroll" style="max-height: 75vh; overflow-y: auto; padding-right: 5px;">
@@ -1645,51 +1951,29 @@ function renderRasgos() {
     // 1. SECCIÓN DE RAZA (Desplegable Principal)
     // ==========================================
     if (razaElegida) {
-        // La propiedad 'open' hace que arranque abierto por defecto. Si lo quitas, arrancará cerrado.
         html += `<details open class="desplegable-seccion">
-                    <summary class="desplegable-titulo">Raza: ${razaElegida.nombre}</summary>
-                    <div class="desplegable-contenido">`;
+                    <summary class="desplegable-titulo">Raza: ${textoSeguro(razaElegida.nombre)}</summary>                    <div class="desplegable-contenido">`;
         
-        // Rasgos base de la Raza
         if (razaElegida.rasgos && razaElegida.rasgos.length > 0) {
             razaElegida.rasgos.forEach(rasgo => {
-                listaRasgosActuales.push({ ...rasgo, origen: razaElegida.nombre });
-                let resumen = rasgo.descripcionResum || (rasgo.descripcion ? rasgo.descripcion.substring(0, 60) + "..." : "Sin descripción.");
-                resumen = resumen.replace(/<br>|###|\*\*/g, ""); 
-
-                html += `
-                    <div class="rasgo-tarjeta-boton" onclick="abrirPopupRasgo(${contadorId})">
-                        <div class="rasgo-tarjeta-titulo">${rasgo.nombre}</div>
-                        <div class="rasgo-tarjeta-resumen">${resumen}</div>
-                    </div>
-                `;
-                contadorId++;
+                html += renderTarjetaRasgoFicha(rasgo, razaElegida.nombre);
+                html += renderRasgosElegidosPorSeleccion(rasgo, "raza", razaElegida.nombre);
             });
         }
 
-        // --- SUBRAZA (Desplegable Secundario anidado) ---
         if (subrazaElegida && subrazaElegida.rasgos && subrazaElegida.rasgos.length > 0) {
             html += `<details open class="desplegable-subseccion">
-                        <summary class="desplegable-subtitulo">Subraza: ${subrazaElegida.nombre}</summary>
+                        <summary class="desplegable-subtitulo">Subraza: ${textoSeguro(subrazaElegida.nombre)}</summary>
                         <div class="desplegable-contenido">`;
             
             subrazaElegida.rasgos.forEach(rasgo => {
-                listaRasgosActuales.push({ ...rasgo, origen: subrazaElegida.nombre });
-                let resumen = rasgo.descripcionResum || (rasgo.descripcion ? rasgo.descripcion.substring(0, 60) + "..." : "Sin descripción.");
-                resumen = resumen.replace(/<br>|###|\*\*/g, ""); 
-
-                html += `
-                    <div class="rasgo-tarjeta-boton" onclick="abrirPopupRasgo(${contadorId})">
-                        <div class="rasgo-tarjeta-titulo">${rasgo.nombre}</div>
-                        <div class="rasgo-tarjeta-resumen">${resumen}</div>
-                    </div>
-                `;
-                contadorId++;
+                html += renderTarjetaRasgoFicha(rasgo, subrazaElegida.nombre);
+                html += renderRasgosElegidosPorSeleccion(rasgo, "subraza", subrazaElegida.nombre);
             });
-            html += `</div></details>`; // Cierra Subraza
+            html += `</div></details>`;
         }
         
-        html += `</div></details>`; // Cierra Raza
+        html += `</div></details>`;
     }
 
     // ==========================================
@@ -1697,55 +1981,33 @@ function renderRasgos() {
     // ==========================================
     clasesActivas.filter(slot => slot.clase && slot.nivel > 0).forEach(slot => {
         html += `<details open class="desplegable-seccion" style="margin-top: 15px;">
-                    <summary class="desplegable-titulo">Clase ${slot.numeroSlot}: ${slot.clase.nombre} nivel ${slot.nivel}</summary>
-                    <div class="desplegable-contenido">`;
+                    <summary class="desplegable-titulo">Clase ${slot.numeroSlot}: ${textoSeguro(slot.clase.nombre)} nivel ${slot.nivel}</summary>                    <div class="desplegable-contenido">`;
         
         if (slot.clase.rasgos && slot.clase.rasgos.length > 0) {
             let tieneRasgosClase = false;
             slot.clase.rasgos.forEach(rasgo => {
               if (rasgoDisponiblePorNivelClase(rasgo, slot.nivel)) {
                     tieneRasgosClase = true;
-                    listaRasgosActuales.push({...rasgo,origen: slot.clase.nombre});
-                    let resumen = rasgo.descripcionResum || (rasgo.descripcion ? rasgo.descripcion.substring(0, 60) + "..." : "Sin descripción.");
-                    resumen = resumen.replace(/<br>|###|\*\*/g, "");
-
-                    html += `
-                        <div class="rasgo-tarjeta-boton" onclick="abrirPopupRasgo(${contadorId})">
-                            <div class="rasgo-tarjeta-titulo">
-                                ${rasgo.nombre} <span style="font-size: 11px; font-weight: normal; color: #8b7355;">(Nvl ${rasgo.nivelClase || 1} de ${slot.clase.nombre})</span>
-                            </div>
-                            <div class="rasgo-tarjeta-resumen">${resumen}</div>
-                        </div>
-                    `;
-                    contadorId++;
+                    const tituloNivel = `<span style="font-size: 11px; font-weight: normal; color: #8b7355;">(Nvl ${rasgo.nivelClase || 1} de ${textoSeguro(slot.clase.nombre)})</span>`;
+                    html += renderTarjetaRasgoFicha(rasgo, slot.clase.nombre, tituloNivel);
+                    html += renderRasgosElegidosPorSeleccion(rasgo, `clase${slot.numeroSlot}`, slot.clase.nombre);
                 }
             });
   
             if (!tieneRasgosClase) {
-                html += `<p style="color: #776a62; font-style: italic; font-size: 13px; margin-left: 10px;">Aún no tienes rasgos desbloqueados para tu nivel de ${slot.clase.nombre}.</p>`;
-            }
+                html += `<p style="color: #776a62; font-style: italic; font-size: 13px; margin-left: 10px;">Aún no tienes rasgos desbloqueados para tu nivel de ${textoSeguro(slot.clase.nombre)}.</p>`;            }
         }
 
         if (slot.subclase && slot.subclase.rasgos && slot.subclase.rasgos.length > 0) {
             html += `<details open class="desplegable-subseccion">
-                        <summary class="desplegable-subtitulo">Subclase: ${slot.subclase.nombre}</summary>
+                        <summary class="desplegable-subtitulo">Subclase: ${textoSeguro(slot.subclase.nombre)}</summary>
                         <div class="desplegable-contenido">`;
             
             slot.subclase.rasgos.forEach(rasgo => {
                 if (rasgoDisponiblePorNivelClase(rasgo, slot.nivel)) {
-                    listaRasgosActuales.push({ ...rasgo, origen: slot.subclase.nombre });
-                    let resumen = rasgo.descripcionResum || (rasgo.descripcion ? rasgo.descripcion.substring(0, 60) + "..." : "Sin descripción.");
-                    resumen = resumen.replace(/<br>|###|\*\*/g, "");
-
-                    html += `
-                        <div class="rasgo-tarjeta-boton" onclick="abrirPopupRasgo(${contadorId})">
-                            <div class="rasgo-tarjeta-titulo">
-                                ${rasgo.nombre} <span style="font-size: 11px; font-weight: normal; color: #8b7355;">(Nvl ${rasgo.nivelClase || 1} de ${slot.clase.nombre})</span>
-                            </div>
-                            <div class="rasgo-tarjeta-resumen">${resumen}</div>
-                        </div>
-                    `;
-                    contadorId++;
+                    const tituloNivel = `<span style="font-size: 11px; font-weight: normal; color: #8b7355;">(Nvl ${rasgo.nivelClase || 1} de ${textoSeguro(slot.clase.nombre)})</span>`;
+                    html += renderTarjetaRasgoFicha(rasgo, slot.subclase.nombre, tituloNivel);
+                    html += renderRasgosElegidosPorSeleccion(rasgo, `clase${slot.numeroSlot}`, slot.subclase.nombre);
                 }
             });
 
@@ -1755,7 +2017,7 @@ function renderRasgos() {
         html += `</div></details>`;
     });
 
-    html += `</div>`; // Cierra el contenedor con scroll
+    html += `</div>`;
     document.querySelector(".panel-ventanas").innerHTML = html;
 }
 // --- FUNCIONES DEL POPUP DE RASGOS ---
@@ -1976,44 +2238,998 @@ function toggleOpcionSeleccionBuild(indice, opcionId) {
 function renderHechizos() {
   // Placeholder — podés expandir esto con tu lista de hechizos
   panelVentanas.innerHTML = `
-    <h2 class="titulo-panel">Hechizos</h2>
+    <h2 class="titulo-panel">Conjuros</h2>
     <p style="color:#6b5a53; text-align:center; margin-top:20px;">
-      ✨ Esta sección mostrará los hechizos conocidos del personaje.<br>
+      ✨ Esta sección mostrará los conjuros conocidos del personaje.<br>
       <small>Próximamente: filtros por nivel y escuela.</small>
     </p>
   `;
 }
 
-function renderEquipo() {
-  // Buscamos los objetos del inventario del personaje en el libro de reglas
-  const inventario = personajeActual.equipo ?? [];
-  const escudoId   = personajeActual.escudo;
+const MONEDAS_DND = [
+  { id: "cp", nombre: "Cobre", etiqueta: "CP", valorCp: 1 },
+  { id: "sp", nombre: "Plata", etiqueta: "SP", valorCp: 10 },
+  { id: "ep", nombre: "Electro", etiqueta: "EP", valorCp: 50 },
+  { id: "gp", nombre: "Oro", etiqueta: "GP", valorCp: 100 },
+  { id: "pp", nombre: "Platino", etiqueta: "PP", valorCp: 1000 }
+];
 
-  const objetos = inventario
-    .map(id => libroDeReglasBasicas.equipo.find(e => e.id === id))
-    .filter(Boolean);
+const CONFIG_EQUIPO = {
+  arma: {
+    titulo: "Armas",
+    singular: "Arma",
+    subtipos: ["Arma sencilla", "Arma natural", "Arma improvisada", "Arma marcial"]
+  },
+  armadura: {
+    titulo: "Armaduras",
+    singular: "Armadura",
+    subtipos: ["Ligero", "Medio", "Pesado", "Escudo"]
+  },
+  equipo: {
+    titulo: "Equipo",
+    singular: "Equipo",
+    subtipos: ["Herramienta", "Objeto aventurero", "Objeto mágico", "Otro"]
+  }
+};
 
-  const escudo = escudoId
-    ? libroDeReglasBasicas.equipo.find(e => e.id === escudoId)
+function asegurarDatosEquipoPersonaje() {
+  personajeActual.monedas = normalizarMonedasPersonaje(personajeActual.monedas);
+  personajeActual.equipo = normalizarListaIds(personajeActual.equipo);
+  personajeActual.inventarioEquipo = normalizarInventarioEquipo(personajeActual.inventarioEquipo);
+  personajeActual.sintonizacionSlots = Math.max(0, Number(personajeActual.sintonizacionSlots ?? 3) || 0);
+  personajeActual.sintonizados = normalizarListaIds(personajeActual.sintonizados).slice(0, personajeActual.sintonizacionSlots);
+}
+
+function obtenerMonedaConfig(monedaId) {
+  return MONEDAS_DND.find(moneda => moneda.id === monedaId) || MONEDAS_DND[0];
+}
+
+function obtenerCantidadMoneda(monedaId) {
+  asegurarDatosEquipoPersonaje();
+  return Math.max(0, Math.floor(Number(personajeActual.monedas[monedaId]) || 0));
+}
+
+function cambiarCantidadMoneda(monedaId, modo, valor) {
+  asegurarDatosEquipoPersonaje();
+  const cantidad = Math.max(0, Math.floor(Number(valor)) || 0);
+  const actual = obtenerCantidadMoneda(monedaId);
+
+  if (modo === "sumar") personajeActual.monedas[monedaId] = actual + cantidad;
+  if (modo === "restar") personajeActual.monedas[monedaId] = Math.max(0, actual - cantidad);
+  if (modo === "establecer") personajeActual.monedas[monedaId] = cantidad;
+
+  marcarPersonajeModificado();
+  renderEquipo();
+  abrirPopupMoneda(monedaId);
+}
+
+
+function maximoComunDivisor(a, b) {
+  let x = Math.abs(Number(a) || 0);
+  let y = Math.abs(Number(b) || 0);
+  while (y) {
+    const resto = x % y;
+    x = y;
+    y = resto;
+  }
+  return x || 1;
+}
+
+function obtenerPasoCanjeMoneda(origenId, destinoId) {
+  const origen = obtenerMonedaConfig(origenId);
+  const destino = obtenerMonedaConfig(destinoId);
+  return origen && destino ? origen.valorCp / maximoComunDivisor(origen.valorCp, destino.valorCp) : 1;
+}
+
+function obtenerMaximoCanjeMoneda(origenId, destinoId) {
+  const origen = obtenerMonedaConfig(origenId);
+  const destino = obtenerMonedaConfig(destinoId);
+  if (!origen || !destino || origen.id === destino.id) return 0;
+  const cantidadOrigen = obtenerCantidadMoneda(origenId);
+  const valorTotalOrigen = cantidadOrigen * origen.valorCp;
+
+  return Math.floor(valorTotalOrigen / destino.valorCp);
+}
+
+function obtenerCostoCanjeEnOrigen(origenId, destinoId, cantidadDestino) {
+  const origen = obtenerMonedaConfig(origenId);
+  const destino = obtenerMonedaConfig(destinoId);
+  const cantidad = Math.max(0, Math.floor(Number(cantidadDestino)) || 0);
+  const costo = (cantidad * destino.valorCp) / origen.valorCp;
+  return Number.isInteger(costo) ? costo : null;
+}
+
+function canjearMoneda(origenId) {
+  const destinoId = document.getElementById("monedaDestino")?.value;
+  const cantidadDestino = Math.max(0, Math.floor(Number(document.getElementById("monedaCanjeCantidad")?.value)) || 0);
+  const maximo = obtenerMaximoCanjeMoneda(origenId, destinoId);
+  const costoOrigen = obtenerCostoCanjeEnOrigen(origenId, destinoId, cantidadDestino);
+
+  if (!destinoId || destinoId === origenId || cantidadDestino <= 0 || cantidadDestino > maximo || costoOrigen === null) {
+    abrirPopupMoneda(origenId);
+    return;
+  }
+
+  personajeActual.monedas[origenId] = obtenerCantidadMoneda(origenId) - costoOrigen;
+  personajeActual.monedas[destinoId] = obtenerCantidadMoneda(destinoId) + cantidadDestino;
+  marcarPersonajeModificado();
+  renderEquipo();
+  abrirPopupMoneda(origenId);
+}
+
+function abrirPopupEquipo(titulo, contenidoHtml) {
+  const popup = document.getElementById("popup-rasgo");
+  const contenido = document.getElementById("popup-rasgo-contenido");
+  if (!popup || !contenido) return;
+
+  contenido.innerHTML = `
+    <div class="equipo-popup-grid">
+      <h3 style="color:#5a4035; margin:0 34px 8px 0; font-family:Georgia, serif;">${textoSeguro(titulo)}</h3>
+      ${contenidoHtml}
+    </div>
+  `;
+  popup.classList.remove("oculto");
+}
+
+function cerrarPopupEquipo() {
+  cerrarPopupRasgo();
+}
+
+function abrirPopupMoneda(monedaId) {
+  asegurarDatosEquipoPersonaje();
+  const moneda = obtenerMonedaConfig(monedaId);
+  const opcionesDestino = MONEDAS_DND
+    .filter(item => item.id !== monedaId)
+    .map(item => {
+      const maximo = obtenerMaximoCanjeMoneda(monedaId, item.id);
+      const paso = obtenerPasoCanjeMoneda(monedaId, item.id);
+      const deshabilitada = maximo < paso;
+      const avisoExactitud = paso > 1 ? ` (múltiplos de ${paso})` : "";
+      return `<option value="${item.id}" ${deshabilitada ? "disabled" : ""}>${item.nombre} (${item.etiqueta}) — máx. ${maximo}${avisoExactitud}</option>`;
+    }).join("");
+
+  abrirPopupEquipo(`Monedas de ${moneda.nombre}`, `
+    <p style="margin:0; color:#6b5a53;">Cantidad actual: <strong>${obtenerCantidadMoneda(monedaId)} ${moneda.etiqueta}</strong></p>
+    <div class="equipo-popup-fila">
+      <div class="equipo-popup-campo">
+        <label for="monedaValor">Cantidad</label>
+        <input id="monedaValor" type="number" min="0" step="1" value="1">
+      </div>
+      <div class="equipo-popup-campo">
+        <label>Acciones</label>
+        <div class="equipo-popup-acciones" style="justify-content:flex-start; margin-top:0;">
+          <button class="equipo-popup-accion" type="button" onclick="cambiarCantidadMoneda('${monedaId}', 'sumar', document.getElementById('monedaValor').value)">Sumar</button>
+          <button class="equipo-popup-accion" type="button" onclick="cambiarCantidadMoneda('${monedaId}', 'restar', document.getElementById('monedaValor').value)">Restar</button>
+          <button class="equipo-popup-accion" type="button" onclick="cambiarCantidadMoneda('${monedaId}', 'establecer', document.getElementById('monedaValor').value)">Establecer</button>
+        </div>
+      </div>
+    </div>
+    <hr class="equipo-separador">
+    <div class="equipo-popup-campo">
+      <label for="monedaDestino">Transformar a</label>
+      <select id="monedaDestino" onchange="actualizarMaximoCanjeMoneda('${monedaId}')">${opcionesDestino}</select>
+    </div>
+    <div class="equipo-popup-campo">
+      <label for="monedaCanjeCantidad">Cantidad de monedas destino</label>
+      <input id="monedaCanjeCantidad" type="number" min="0" step="1" value="0">
+      <small id="monedaCanjeAyuda" style="color:#6b5a53; display:block; margin-top:5px;"></small>
+    </div>
+    <div class="equipo-popup-acciones">
+      <button class="equipo-popup-accion" type="button" onclick="canjearMoneda('${monedaId}')">Transformar</button>
+    </div>
+  `);
+  actualizarMaximoCanjeMoneda(monedaId);
+}
+
+function actualizarMaximoCanjeMoneda(origenId) {
+  const destinoId = document.getElementById("monedaDestino")?.value;
+  const input = document.getElementById("monedaCanjeCantidad");
+  const ayuda = document.getElementById("monedaCanjeAyuda");
+  if (!destinoId || !input || !ayuda) return;
+
+  const maximo = obtenerMaximoCanjeMoneda(origenId, destinoId);
+  const paso = obtenerPasoCanjeMoneda(origenId, destinoId);
+  input.max = String(maximo);
+  input.step = String(paso);
+  if (Number(input.value) > maximo) input.value = String(maximo);
+  ayuda.textContent = paso > 1
+    ? `Máximo permitido: ${maximo}. Para no partir monedas de origen, usa múltiplos de ${paso}.`
+    : `Máximo permitido: ${maximo}.`;
+}
+
+function obtenerBibliotecaPorTipoEquipo(tipo) {
+  if (tipo === "arma") return libroDeReglasBasicas.armas || [];
+  if (tipo === "armadura") {
+    return [
+      ...(libroDeReglasBasicas.armaduras || []),
+      ...(libroDeReglasBasicas.equipo || []).filter(item => item.tipo === "escudo")
+    ];
+  }
+  return libroDeReglasBasicas.equipo || [];
+}
+
+function describirEfectosEquipo(item) {
+  if (!item) return "";
+  if (Array.isArray(item.efectos)) return item.efectos.join("\n");
+  return String(item.efectos || "");
+}
+
+function detectarDestrezaArmadura(item) {
+  const texto = `${item?.tipo || ""} ${item?.subtipo || ""} ${describirEfectosEquipo(item)}`.toLowerCase();
+  if (texto.includes("máximo") || texto.includes("max") || texto.includes("media")) return "max2";
+  if (texto.includes("pesada") || texto.includes("sin destreza") || texto.includes("no usar")) return "no";
+  return "usar";
+}
+
+function crearDatosPlantillaEquipo(tipo) {
+  return obtenerBibliotecaPorTipoEquipo(tipo).reduce((mapa, item) => {
+    const etiquetas = Array.isArray(item.etiquetas) ? item.etiquetas : [];
+    const efectos = describirEfectosEquipo(item);
+    const danoPrincipal = efectos.match(/Daño:\s*([^\s]+)\s+([^\n]+)/i);
+    const danoSecundario = efectos.match(/Versátil:\s*([^\s]+)\s+([^\n]+)/i);
+    const alcance = efectos.match(/Alcance:\s*([^\n]+)/i);
+    const caBaseDetectada = item.caBase || efectos.match(/CA base:\s*(\d+)/i)?.[1] || "";
+    mapa[item.id] = {
+      nombre: item.nombre || "",
+      descripcion: item.descripcion || "",
+      precio: item.precio || "",
+      subtipo: item.subtipo || item.tipo || "",
+      efectos,
+      etiquetas: etiquetas.join(", "),
+      caBase: caBaseDetectada,
+      destrezaCA: detectarDestrezaArmadura(item),
+      bonificadorExtra: 0,
+      tipoArma: etiquetas.map(et => String(et).toLowerCase()).includes("marcial") || String(item.subtipo || "").toLowerCase().includes("marcial") ? "marcial" : "sencilla",
+      ataqueMod: etiquetas.some(et => normalizarTextoCompetencia(et).includes("municion") || normalizarTextoCompetencia(et).includes("distancia")) ? "DES" : "FUE",
+      danoMod: etiquetas.some(et => normalizarTextoCompetencia(et).includes("municion") || normalizarTextoCompetencia(et).includes("distancia")) ? "DES" : "FUE",
+      danoDado: danoPrincipal?.[1] || "",
+      danoTipo: (danoPrincipal?.[2] || "").trim(),
+      danoCritico: "",
+      danoModSecundario: etiquetas.some(et => normalizarTextoCompetencia(et).includes("municion") || normalizarTextoCompetencia(et).includes("distancia")) ? "DES" : "FUE",
+      danoDadoSecundario: danoSecundario?.[1] || "",
+      danoTipoSecundario: (danoSecundario?.[2] || "").trim(),
+      danoCriticoSecundario: "",
+      distancia: (alcance?.[1] || "").trim()
+    };
+    return mapa;
+  }, {});
+}
+
+function obtenerTiposBonificadoresEquipo() {
+  const tiposDetectados = new Set(["bonoCA", "bono_habilidad", "bono_stat", "competencia"]);
+  obtenerRasgosConOrigenParaDetalles().forEach(rasgo => (rasgo.efectos || []).forEach(efecto => {
+    if (["bonoCA", "bonifCA", "bono_habilidad", "bono_stat", "competencia"].includes(efecto.tipoDeEfecto)) {
+      tiposDetectados.add(efecto.tipoDeEfecto === "bonifCA" ? "bonoCA" : efecto.tipoDeEfecto);
+    }
+  }));
+  return [...tiposDetectados];
+}
+
+function crearOpcionesStatsEquipo(seleccionado = "") {
+  return ESTADISTICAS_PRINCIPALES
+    .map(stat => `<option value="${stat.id}" ${stat.id === seleccionado ? "selected" : ""}>${stat.id} — ${stat.nombre}</option>`)
+    .join("");
+}
+
+function crearOpcionesHabilidadesEquipo(seleccionada = "") {
+  return HABILIDADES_PERSONAJE
+    .map(habilidad => `<option value="${textoSeguro(habilidad.nombre)}" ${habilidad.nombre === seleccionada ? "selected" : ""}>${textoSeguro(habilidad.nombre)}</option>`)
+    .join("");
+}
+
+function crearOptionEquipo(valor, texto, seleccionado = "") {
+  return `<option value="${textoSeguro(valor)}" ${String(valor) === String(seleccionado) ? "selected" : ""}>${textoSeguro(texto)}</option>`;
+}
+
+function renderCamposBonificadorEquipo(indice, tipoDeEfecto = "bonoCA", bono = {}) {
+  const tipos = obtenerTiposBonificadoresEquipo();
+  const opcionesTipo = tipos.map(tipo => crearOptionEquipo(tipo, tipo, tipoDeEfecto)).join("");
+  const campoDestino = tipoDeEfecto === "bono_stat"
+    ? `<label>Característica<select data-bono-campo="statAfectada">${crearOpcionesStatsEquipo(bono.statAfectada || "")}</select></label>`
+    : tipoDeEfecto === "bono_habilidad" || tipoDeEfecto === "competencia"
+      ? `<label>Habilidad<select data-bono-campo="habilidadAfectada">${crearOpcionesHabilidadesEquipo(bono.habilidadAfectada || "")}</select></label>`
+      : `<label>Destino<input data-bono-campo="destino" type="text" placeholder="CA general" value="${textoSeguro(bono.categoria || "CA")}"></label>`;
+  const campoValor = tipoDeEfecto === "competencia"
+    ? `<label>Nivel<select data-bono-campo="competencia">${crearOptionEquipo("competencia", "Competencia", bono.competencia || "competencia")}${crearOptionEquipo("pericia", "Pericia", bono.competencia || "competencia")}</select></label>`
+    : `<label>Valor<input data-bono-campo="valor" type="number" step="1" value="${Number(bono.valor) || 0}"></label>`;
+
+  return `
+    <div class="equipo-bonificador" data-bono-indice="${indice}">
+      <label>Tipo<select data-bono-campo="tipoDeEfecto" onchange="actualizarTipoBonificadorEquipo(${indice}, this.value)">${opcionesTipo}</select></label>
+      ${campoDestino}
+      ${campoValor}
+      <button class="equipo-popup-accion equipo-boton-rojo equipo-bonificador-quitar" type="button" onclick="quitarBonificadorEquipo(${indice})">Quitar</button>
+    </div>
+  `;
+}
+
+function agregarBonificadorEquipo(tipoDeEfecto = "bonoCA", bono = {}) {
+  const contenedor = document.getElementById("equipoBonificadoresLista");
+  if (!contenedor) return;
+  const indice = contenedor.querySelectorAll(".equipo-bonificador").length;
+  contenedor.insertAdjacentHTML("beforeend", renderCamposBonificadorEquipo(indice, tipoDeEfecto, bono));
+}
+
+function actualizarTipoBonificadorEquipo(indice, tipoDeEfecto) {
+  const fila = document.querySelector(`[data-bono-indice="${indice}"]`);
+  if (!fila) return;
+  fila.outerHTML = renderCamposBonificadorEquipo(indice, tipoDeEfecto);
+}
+
+function quitarBonificadorEquipo(indice) {
+  document.querySelector(`[data-bono-indice="${indice}"]`)?.remove();
+}
+
+function leerBonificacionesEquipoFormulario() {
+  return [...document.querySelectorAll(".equipo-bonificador")].map(fila => {
+    const leer = campo => fila.querySelector(`[data-bono-campo="${campo}"]`)?.value || "";
+    const tipoDeEfecto = leer("tipoDeEfecto") || "bonoCA";
+    return {
+      tipoDeEfecto,
+      valor: Number(leer("valor")) || 0,
+      statAfectada: leer("statAfectada"),
+      habilidadAfectada: leer("habilidadAfectada"),
+      competencia: leer("competencia") || "competencia",
+      categoria: leer("destino") || "CA"
+    };
+  });
+}
+
+function rellenarBonificacionesEquipoFormulario(bonificaciones = []) {
+  const contenedor = document.getElementById("equipoBonificadoresLista");
+  if (!contenedor) return;
+  contenedor.innerHTML = "";
+  normalizarBonificacionesEquipo(bonificaciones).forEach(bono => agregarBonificadorEquipo(bono.tipoDeEfecto, bono));
+}
+
+function asignarValorCampoEquipo(id, valor) {
+  const campo = document.getElementById(id);
+  if (!campo) return;
+  if (campo.tagName === "SELECT" && valor && ![...campo.options].some(opcion => opcion.value === String(valor))) {
+    campo.insertAdjacentHTML("beforeend", `<option value="${textoSeguro(valor)}">${textoSeguro(valor)}</option>`);
+  }
+  campo.value = valor ?? "";
+}
+
+function aplicarPlantillaEquipo(tipo, plantillaId) {
+  const plantilla = crearDatosPlantillaEquipo(tipo)[plantillaId];
+  if (!plantilla) return;
+  rellenarFormularioEquipo(plantilla);
+}
+
+function leerDatosItemEquipoDesdeFormulario(tipo, idExistente = "") {
+  const config = CONFIG_EQUIPO[tipo] || CONFIG_EQUIPO.equipo;
+  const nombre = document.getElementById("equipoNombre")?.value.trim();
+  if (!nombre) return null;
+  const itemExistente = personajeActual.inventarioEquipo.find(item => item.id === idExistente);
+
+  return {
+    id: idExistente || `custom-${tipo}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    nombre,
+    descripcion: document.getElementById("equipoDescripcion")?.value.trim() || "",
+    precio: document.getElementById("equipoPrecio")?.value.trim() || "",
+    tipo,
+    subtipo: document.getElementById("equipoSubtipo")?.value || config.subtipos[0] || "",
+    equipado: tipo === "arma" || tipo === "armadura" ? itemExistente?.equipado !== false : Boolean(itemExistente?.equipado),
+    efectos: document.getElementById("equipoEfectos")?.value.trim() || "",
+    etiquetas: (document.getElementById("equipoEtiquetas")?.value || "")
+      .split(",")
+      .map(etiqueta => etiqueta.trim())
+      .filter(Boolean),
+    caBase: document.getElementById("equipoCABase")?.value || "",
+    destrezaCA: document.getElementById("equipoDestrezaCA")?.value || "usar",
+    bonificadorExtra: Number(document.getElementById("equipoBonificadorExtra")?.value) || 0,
+    tipoArma: document.getElementById("equipoTipoArma")?.value || "",
+    ataqueMod: document.getElementById("equipoAtaqueMod")?.value || "FUE",
+    ataqueCompetencia: document.getElementById("equipoAtaqueCompetencia")?.value || "auto",
+    ataqueBonificador: Number(document.getElementById("equipoAtaqueBonificador")?.value) || 0,
+    danoMod: document.getElementById("equipoDanoMod")?.value || "FUE",
+    danoDado: document.getElementById("equipoDanoDado")?.value.trim() || "",
+    danoTipo: document.getElementById("equipoDanoTipo")?.value.trim() || "",
+      danoCritico: document.getElementById("equipoDanoCritico")?.value.trim() || "",
+    danoModSecundario: document.getElementById("equipoDanoModSecundario")?.value || document.getElementById("equipoDanoMod")?.value || "FUE",
+    danoDadoSecundario: document.getElementById("equipoDanoDadoSecundario")?.value.trim() || "",
+    danoTipoSecundario: document.getElementById("equipoDanoTipoSecundario")?.value.trim() || "",
+    danoCriticoSecundario: document.getElementById("equipoDanoCriticoSecundario")?.value.trim() || "",
+    distancia: document.getElementById("equipoDistancia")?.value.trim() || "",
+    bonificaciones: leerBonificacionesEquipoFormulario()
+  };
+}
+
+function guardarCambiosItemEquipo(tipo, itemId) {
+  const indice = personajeActual.inventarioEquipo.findIndex(item => item.id === itemId);
+  if (indice < 0) return;
+  const item = leerDatosItemEquipoDesdeFormulario(tipo, itemId);
+  if (!item) return;
+
+  personajeActual.inventarioEquipo[indice] = item;
+  aplicarReglasEquipoExclusivo(item);
+  cerrarPopupEquipo();
+  refrescarTrasCambioEquipo();
+}
+
+function crearItemEquipoDesdeFormulario(tipo) {
+  const item = leerDatosItemEquipoDesdeFormulario(tipo);
+  if (!item) return;
+
+  personajeActual.inventarioEquipo.push(item);
+  aplicarReglasEquipoExclusivo(item);
+  cerrarPopupEquipo();
+  refrescarTrasCambioEquipo();
+}
+
+function crearCamposArmaduraEquipo() {
+  return `
+    <div class="equipo-popup-fila">
+      <div class="equipo-popup-campo"><label for="equipoCABase">CA base</label><input id="equipoCABase" type="number" step="1" placeholder="Ej.: 11"></div>
+      <div class="equipo-popup-campo"><label for="equipoDestrezaCA">Destreza</label><select id="equipoDestrezaCA"><option value="usar">Utilizar destreza</option><option value="max2">Máx. +2</option><option value="no">No usar destreza</option></select></div>
+    </div>
+    <div class="equipo-popup-campo"><label for="equipoBonificadorExtra">Bonificador</label><input id="equipoBonificadorExtra" type="number" step="1" value="0"></div>
+    <hr class="equipo-separador">
+  `;
+}
+
+function crearCamposArmaEquipo() {
+  return `
+    <div class="equipo-popup-campo"><label for="equipoTipoArma">Tipo de arma</label><select id="equipoTipoArma"><option value="sencilla">Sencilla</option><option value="marcial">Marcial</option><option value="improvisada">Improvisada</option><option value="natural">Natural</option></select></div>
+    <h4 class="equipo-popup-subtitulo">Impacto</h4>
+    <div class="equipo-popup-fila equipo-popup-fila-una">
+      <div class="equipo-popup-campo"><label for="equipoAtaqueMod">Modificador</label><select id="equipoAtaqueMod">${crearOpcionesStatsEquipo("FUE")}</select></div>
+    </div>
+    <div class="equipo-popup-fila">
+      <div class="equipo-popup-campo"><label for="equipoAtaqueCompetencia">Competencia</label><select id="equipoAtaqueCompetencia"><option value="auto">Inicialmente vacío / automático</option><option value="sin">Sin competencia</option><option value="competencia">Competencia</option><option value="pericia">Pericia</option></select></div>
+      <div class="equipo-popup-campo"><label for="equipoAtaqueBonificador">Bonificador (arma mágica)</label><input id="equipoAtaqueBonificador" type="number" step="1" value="0"></div>
+    </div>
+    <h4 class="equipo-popup-subtitulo">Daño</h4>
+    <div class="equipo-popup-fila equipo-popup-fila-tres">
+      <div class="equipo-popup-campo"><label for="equipoDanoMod">Modificador</label><select id="equipoDanoMod">${crearOpcionesStatsEquipo("FUE")}</select></div>
+      <div class="equipo-popup-campo"><label for="equipoDanoDado">Dado de daño</label><input id="equipoDanoDado" type="text" placeholder="Ej.: 1d8, 4d4, 6d6"></div>
+      <div class="equipo-popup-campo"><label for="equipoDanoCritico">Dado de daño crítico</label><input id="equipoDanoCritico" type="text" placeholder="Ej.: 2d8"></div>
+    </div>
+    <div class="equipo-popup-fila equipo-popup-fila-tres">
+      <div class="equipo-popup-campo"><label for="equipoDanoModSecundario">Modificador</label><select id="equipoDanoModSecundario">${crearOpcionesStatsEquipo("FUE")}</select></div>
+      <div class="equipo-popup-campo"><label for="equipoDanoDadoSecundario">Dado secundario</label><input id="equipoDanoDadoSecundario" type="text" placeholder="Opcional: 1d6"></div>
+      <div class="equipo-popup-campo"><label for="equipoDanoCriticoSecundario">Dado de daño crítico secundario</label><input id="equipoDanoCriticoSecundario" type="text" placeholder="Opcional: 2d6"></div>
+    </div>
+    <div class="equipo-popup-fila equipo-popup-fila-tres">
+      <div class="equipo-popup-campo"><label for="equipoDanoTipo">Tipo de daño</label><input id="equipoDanoTipo" type="text" placeholder="cortante, fuego..."></div>
+      <div class="equipo-popup-campo"><label for="equipoDanoTipoSecundario">Tipo daño secundario</label><input id="equipoDanoTipoSecundario" type="text" placeholder="Opcional"></div>
+      <div class="equipo-popup-campo"><label for="equipoDistancia">Distancia</label><input id="equipoDistancia" type="text" placeholder="Ej.: 150/600 pies"></div>
+    </div>
+    <hr class="equipo-separador">
+  `;
+}
+
+function crearCamposBonificadoresEquipo() {
+  return `
+    <div class="equipo-popup-campo">
+      <label>Otros bonificadores</label>
+      <div id="equipoBonificadoresLista" class="equipo-bonificadores-lista"></div>
+      <div class="equipo-popup-acciones" style="justify-content:flex-start; margin-top:8px;">
+        <button class="equipo-popup-accion" type="button" onclick="agregarBonificadorEquipo('bonoCA')">+ Bono CA</button>
+        <button class="equipo-popup-accion" type="button" onclick="agregarBonificadorEquipo('bono_habilidad')">+ Habilidad</button>
+        <button class="equipo-popup-accion" type="button" onclick="agregarBonificadorEquipo('bono_stat')">+ Stat</button>
+        <button class="equipo-popup-accion" type="button" onclick="agregarBonificadorEquipo('competencia')">+ Competencia</button>
+      </div>
+    </div>
+  `;
+}
+
+function rellenarFormularioEquipo(item) {
+  asignarValorCampoEquipo("equipoNombre", item.nombre || "");
+  asignarValorCampoEquipo("equipoDescripcion", item.descripcion || "");
+  asignarValorCampoEquipo("equipoPrecio", item.precio || "");
+  asignarValorCampoEquipo("equipoSubtipo", item.subtipo || item.tipo || "");
+  asignarValorCampoEquipo("equipoEfectos", describirEfectosEquipo(item));
+  asignarValorCampoEquipo("equipoEtiquetas", Array.isArray(item.etiquetas) ? item.etiquetas.join(", ") : item.etiquetas || "");
+  asignarValorCampoEquipo("equipoCABase", item.caBase || "");
+  asignarValorCampoEquipo("equipoDestrezaCA", item.destrezaCA || detectarDestrezaArmadura(item));
+  asignarValorCampoEquipo("equipoBonificadorExtra", item.bonificadorExtra || 0);
+  asignarValorCampoEquipo("equipoTipoArma", item.tipoArma || "sencilla");
+  asignarValorCampoEquipo("equipoAtaqueMod", item.ataqueMod || "FUE");
+  asignarValorCampoEquipo("equipoAtaqueCompetencia", item.ataqueCompetencia || "auto");
+  asignarValorCampoEquipo("equipoAtaqueBonificador", item.ataqueBonificador || 0);
+  asignarValorCampoEquipo("equipoDanoMod", item.danoMod || "FUE");
+  asignarValorCampoEquipo("equipoDanoDado", item.danoDado || "");
+  asignarValorCampoEquipo("equipoDanoTipo", item.danoTipo || "");
+  asignarValorCampoEquipo("equipoDanoCritico", item.danoCritico || "");
+  asignarValorCampoEquipo("equipoDanoModSecundario", item.danoModSecundario || item.danoMod || "FUE");
+  asignarValorCampoEquipo("equipoDanoDadoSecundario", item.danoDadoSecundario || "");
+  asignarValorCampoEquipo("equipoDanoTipoSecundario", item.danoTipoSecundario || "");
+  asignarValorCampoEquipo("equipoDanoCriticoSecundario", item.danoCriticoSecundario || "");
+  asignarValorCampoEquipo("equipoDistancia", item.distancia || "");
+  rellenarBonificacionesEquipoFormulario(item.bonificaciones || []);
+}
+
+function abrirPopupFormularioEquipo(tipo, item = null) {
+  const config = CONFIG_EQUIPO[tipo] || CONFIG_EQUIPO.equipo;
+  const biblioteca = obtenerBibliotecaPorTipoEquipo(tipo);
+  const opcionesPlantilla = [`<option value="">— Crear desde cero —</option>`, ...biblioteca.map(objeto => `<option value="${textoSeguro(objeto.id)}">${textoSeguro(objeto.nombre)}</option>`)].join("");
+  const opcionesSubtipo = config.subtipos.map(subtipo => `<option value="${textoSeguro(subtipo)}">${textoSeguro(subtipo)}</option>`).join("");
+  const camposEspeciales = tipo === "arma" ? crearCamposArmaEquipo() : tipo === "armadura" ? crearCamposArmaduraEquipo() : "";
+  const esEdicion = Boolean(item);
+  const accionPrincipal = esEdicion
+    ? `<button class="equipo-popup-accion" type="button" onclick="guardarCambiosItemEquipo('${tipo}', '${item.id}')">Aplicar Cambios</button>`
+    : `<button class="equipo-popup-accion" type="button" onclick="crearItemEquipoDesdeFormulario('${tipo}')">Añadir</button>`;
+  const accionEliminar = esEdicion
+    ? `<button class="equipo-popup-accion equipo-boton-rojo" type="button" onclick="abrirPopupConfirmarEliminarEquipo('${item.id}')">Eliminar</button>`
+    : "";
+
+  abrirPopupEquipo(`${esEdicion ? "Editar" : "Añadir"} ${config.singular}`, `
+    <div class="equipo-popup-campo">
+      <label for="equipoPlantilla">Cargar rasgos desde datos.js</label>
+      <select id="equipoPlantilla" onchange="aplicarPlantillaEquipo('${tipo}', this.value)">${opcionesPlantilla}</select>
+    </div>
+    <div class="equipo-popup-campo">
+      <label for="equipoNombre">Nombre</label>
+      <input id="equipoNombre" type="text" placeholder="Ej.: Espada larga">
+    </div>
+    <div class="equipo-popup-campo">
+      <label for="equipoDescripcion">Caja con descripción</label>
+      <textarea id="equipoDescripcion" rows="4" placeholder="Descripción del objeto"></textarea>
+    </div>
+    <div class="equipo-popup-fila">
+      <div class="equipo-popup-campo">
+        <label for="equipoPrecio">Precio</label>
+        <input id="equipoPrecio" type="text" placeholder="Ej.: 15 gp">
+      </div>
+      <div class="equipo-popup-campo">
+        <label for="equipoSubtipo">Subtipo</label>
+        <select id="equipoSubtipo">${opcionesSubtipo}</select>
+      </div>
+    </div>
+    ${camposEspeciales}
+    <div class="equipo-popup-campo">
+      <label for="equipoEfectos">Efectos correspondientes</label>      <textarea id="equipoEfectos" rows="3" placeholder="Ej.: 1d8 cortante, +1 CA, requiere sintonización..."></textarea>
+    </div>
+    <div class="equipo-popup-campo">
+      <label for="equipoEtiquetas">Etiquetas</label>
+      <input id="equipoEtiquetas" type="text" placeholder="Ligera, Arrojadiza, Una mano">
+    </div>
+    ${crearCamposBonificadoresEquipo()}
+    <div class="equipo-popup-acciones equipo-popup-acciones-finales">
+      ${accionEliminar}
+      ${accionPrincipal}
+    </div>
+  `);
+
+  if (item) rellenarFormularioEquipo(item);
+}
+
+function abrirPopupAgregarEquipo(tipo) {
+  abrirPopupFormularioEquipo(tipo);
+}
+
+function abrirPopupEditarEquipo(itemId) {
+  asegurarDatosEquipoPersonaje();
+  const item = personajeActual.inventarioEquipo.find(objeto => objeto.id === itemId);
+  if (!item) return;
+  abrirPopupFormularioEquipo(item.tipo, item);
+}
+
+function abrirPopupConfirmarEliminarEquipo(itemId) {
+  asegurarDatosEquipoPersonaje();
+  const item = personajeActual.inventarioEquipo.find(objeto => objeto.id === itemId);
+  if (!item) return;
+  abrirPopupEquipo("Eliminar objeto", `
+    <p class="equipo-confirmacion">¿Seguro deseas eliminar ${textoSeguro(item.nombre)}?</p>
+    <div class="equipo-popup-acciones equipo-popup-acciones-finales">
+      <button class="equipo-popup-accion equipo-boton-rojo" type="button" onclick="eliminarItemEquipo('${item.id}')">Eliminar</button>
+      <button class="equipo-popup-accion" type="button" onclick="abrirPopupEditarEquipo('${item.id}')">Cancelar</button>
+    </div>
+  `);
+}
+
+function eliminarItemEquipo(itemId) {
+  asegurarDatosEquipoPersonaje();
+  personajeActual.inventarioEquipo = personajeActual.inventarioEquipo.filter(item => item.id !== itemId);
+  personajeActual.sintonizados = normalizarListaIds(personajeActual.sintonizados).filter(id => id !== itemId);
+  cerrarPopupEquipo();
+  refrescarTrasCambioEquipo();
+}
+
+function esEscudoEquipo(item) {
+  return item?.tipo === "armadura" && normalizarTextoCompetencia(item.subtipo || item.nombre).includes("escudo");
+}
+
+function aplicarReglasEquipoExclusivo(itemActualizado) {
+  if (!itemActualizado?.equipado || itemActualizado.tipo !== "armadura" || esEscudoEquipo(itemActualizado)) return;
+  personajeActual.inventarioEquipo = personajeActual.inventarioEquipo.map(item => (
+    item.id !== itemActualizado.id && item.tipo === "armadura" && !esEscudoEquipo(item)
+      ? { ...item, equipado: false }
+      : item
+  ));
+}
+
+function refrescarTrasCambioEquipo() {
+  marcarPersonajeModificado();
+  refrescarEstadisticasPersonaje();
+  actualizarCA();
+  renderAtaquesCombate();
+  if (tabActivaId === "equipoBtn") renderEquipo();
+}
+
+function alternarEquipadoItem(itemId) {
+  asegurarDatosEquipoPersonaje();
+  const indice = personajeActual.inventarioEquipo.findIndex(item => item.id === itemId);
+  if (indice < 0) return;
+
+  const item = { ...personajeActual.inventarioEquipo[indice] };
+  if (!["arma", "armadura"].includes(item.tipo)) return;
+  item.equipado = !item.equipado;
+  personajeActual.inventarioEquipo[indice] = item;
+  aplicarReglasEquipoExclusivo(item);
+  refrescarTrasCambioEquipo();
+}
+
+function abrirPopupSlotsSintonizacion() {
+  asegurarDatosEquipoPersonaje();
+  abrirPopupEquipo("Configurar sintonización", `
+    <div class="equipo-popup-campo">
+      <label for="sintonizacionSlotsInput">Cantidad de slots</label>
+      <input id="sintonizacionSlotsInput" type="number" min="0" step="1" value="${personajeActual.sintonizacionSlots}">
+    </div>
+    <div class="equipo-popup-acciones">
+      <button class="equipo-popup-accion" type="button" onclick="guardarSlotsSintonizacion()">Guardar</button>
+    </div>
+  `);
+}
+
+function guardarSlotsSintonizacion() {
+  const cantidad = Math.max(0, Math.floor(Number(document.getElementById("sintonizacionSlotsInput")?.value)) || 0);
+  personajeActual.sintonizacionSlots = cantidad;
+  personajeActual.sintonizados = normalizarListaIds(personajeActual.sintonizados).slice(0, cantidad);
+  marcarPersonajeModificado();
+  cerrarPopupEquipo();
+  renderEquipo();
+}
+
+function cambiarSintonizacionSlot(indice, itemId) {
+  personajeActual.sintonizados[indice] = itemId;
+  personajeActual.sintonizados = personajeActual.sintonizados.map(id => id || "").slice(0, personajeActual.sintonizacionSlots);
+  marcarPersonajeModificado();
+  renderEquipo();
+}
+
+function obtenerEquipoBiblioteca() {
+  const items = [];
+  const escudo = personajeActual.escudo
+    ? libroDeReglasBasicas.equipo.find(item => item.id === personajeActual.escudo)
+    : null;
+  const armadura = personajeActual.armadura
+    ? libroDeReglasBasicas.armaduras.find(item => item.id === personajeActual.armadura)
     : null;
 
-  const todosLosObjetos = [...objetos, ...(escudo ? [escudo] : [])];
+  (personajeActual.equipo || []).forEach(id => {
+    const item = libroDeReglasBasicas.equipo.find(objeto => objeto.id === id);
+    if (item) items.push({
+      id: item.id,
+      nombre: item.nombre,
+      descripcion: item.descripcion || "Objeto del libro de reglas.",
+      precio: item.precio || "—",
+      tipo: item.tipo === "escudo" ? "armadura" : "equipo",
+      subtipo: item.tipo === "escudo" ? "Escudo" : (item.subtipo || "Objeto"),
+      efectos: item.bonifCA ? `+${item.bonifCA} CA` : "—",
+      caBase: item.caBase || "",
+      destrezaCA: detectarDestrezaArmadura(item),
+      bonifCA: item.bonifCA || 0,
+      etiquetas: item.etiquetas || []
+    });
+  });
+
+  if (escudo) items.push({
+    id: escudo.id,
+    nombre: escudo.nombre,
+    descripcion: escudo.descripcion || "Escudo equipado.",
+    precio: escudo.precio || "—",
+    tipo: "armadura",
+    subtipo: "Escudo",
+    efectos: escudo.bonifCA ? `+${escudo.bonifCA} CA` : "—",
+    caBase: escudo.caBase || "",
+    destrezaCA: "no",
+    bonifCA: escudo.bonifCA || 0,
+    etiquetas: escudo.etiquetas || []
+  });
+
+  if (armadura) items.push({
+    id: armadura.id,
+    nombre: armadura.nombre,
+    descripcion: armadura.descripcion || "Armadura equipada.",
+    precio: armadura.precio || "—",
+    tipo: "armadura",
+    subtipo: armadura.tipo || "Armadura",
+    efectos: armadura.caBase ? `CA base ${armadura.caBase}` : "—",
+    caBase: armadura.caBase || "",
+    destrezaCA: detectarDestrezaArmadura(armadura),
+    etiquetas: armadura.etiquetas || []
+  });
+
+  return items;
+}
+
+function obtenerTodosLosItemsEquipo() {
+  asegurarDatosEquipoPersonaje();
+  return [
+    ...obtenerEquipoBiblioteca().map(item => ({ ...item, editable: false })),
+    ...normalizarInventarioEquipo(personajeActual.inventarioEquipo).map(item => ({ ...item, editable: true }))
+  ];
+}
+
+function describirDestrezaCA(valor) {
+  if (valor === "max2") return "máx. +2";
+  if (valor === "no") return "no usar destreza";
+  return "utilizar destreza";
+}
+
+function obtenerModificadorStatEquipo(stat) {
+  const valor = personajeConBonos?.[stat] ?? personajeActual?.[stat] ?? 10;
+  return calcularModificadorNumero(Number(valor) || 10);
+}
+
+function obtenerBonificadorCAItem(item) {
+  const bonosConfigurados = normalizarBonificacionesEquipo(item.bonificaciones)
+    .filter(bono => ["bonoCA", "bonifCA"].includes(bono.tipoDeEfecto))
+    .reduce((total, bono) => total + (Number(bono.valor) || 0), 0);
+  return (Number(item.bonificadorExtra) || 0) + bonosConfigurados + (Number(item.bonifCA) || 0);
+}
+
+function obtenerModificadorCAArmadura(item) {
+  if (item.destrezaCA === "no" || item.subtipo === "Escudo") return 0;
+  const modDES = obtenerModificadorStatEquipo("DES");
+  return item.destrezaCA === "max2" ? Math.min(modDES, 2) : modDES;
+}
+
+function obtenerFormulaCAEquipo(item) {
+  const base = Number(item.caBase) || 0;
+  const mod = obtenerModificadorCAArmadura(item);
+  const bonificador = obtenerBonificadorCAItem(item);
+  const total = base + mod + bonificador;
+  if (!base && item.subtipo === "Escudo") return bonificador ? formatoValor(bonificador) : "—";
+  const partes = [String(base || "—")];
+  if (item.destrezaCA !== "no" && item.subtipo !== "Escudo") partes.push(`${formatoValor(mod)} (DES${item.destrezaCA === "max2" ? ", máx. +2" : ""})`);
+  if (bonificador) partes.push(formatoValor(bonificador));
+  return `${partes.join(" + ")}${base ? ` = ${total}` : ""}`;
+}
+
+function obtenerCompetenciasArmasPersonaje() {
+  return clasesActivas.flatMap(slot => {
+    const armas = slot.clase?.competencias?.armas;
+    if (Array.isArray(armas)) return armas;
+    if (Array.isArray(armas?.competencias)) return armas.competencias;
+    return [];
+  });
+}
+
+function personajeTieneCompetenciaArma(item) {
+  const competencias = obtenerCompetenciasArmasPersonaje();
+  const tipo = String(item.tipoArma || "").toLowerCase();
+  if (tipo === "sencilla") return competencias.includes("armasSimples");
+  if (tipo === "marcial") return competencias.includes("armasMarciales");
+  return false;
+}
+
+function obtenerBonoCompetenciaAtaque(item) {
+  const bonoCompetencia = calcularBonificadorCompetencia();
+  if (item.ataqueCompetencia === "sin") return 0;
+  if (item.ataqueCompetencia === "competencia") return bonoCompetencia;
+  if (item.ataqueCompetencia === "pericia") return bonoCompetencia * 2;
+  return personajeTieneCompetenciaArma(item) ? bonoCompetencia : 0;
+}
+
+function obtenerFormulaImpactoEquipo(item) {
+  const stat = item.ataqueMod || "FUE";
+  const mod = obtenerModificadorStatEquipo(stat);
+  const competencia = obtenerBonoCompetenciaAtaque(item);
+  const bonificador = Number(item.ataqueBonificador) || 0;
+  const total = mod + competencia + bonificador;
+  return `${formatoValor(total)} (${formatoValor(mod)} ${stat} + ${formatoValor(competencia)} comp. + ${formatoValor(bonificador)} bonif.)`;
+}
+
+function describirDanoEquipo(item, secundario = false) {
+  const dado = secundario ? item.danoDadoSecundario : item.danoDado;
+  const tipo = secundario ? item.danoTipoSecundario : item.danoTipo;
+  const critico = secundario ? item.danoCriticoSecundario : item.danoCritico;
+  const stat = secundario ? (item.danoModSecundario || item.danoMod || "FUE") : (item.danoMod || "FUE");
+  if (!dado && !tipo && !critico) return "";
+  const mod = obtenerModificadorStatEquipo(stat);
+  return `${[dado, tipo].filter(Boolean).join(" ") || "—"} + ${formatoValor(mod)} (${stat})${critico ? ` · crítico ${critico}` : ""}`;
+}
+
+function obtenerArmasEquipadasCombate() {
+  return normalizarInventarioEquipo(personajeActual.inventarioEquipo)
+    .filter(item => item.tipo === "arma" && item.equipado);
+}
+
+function renderAtaquesCombate() {
+  const contenedor = document.getElementById("ataquesCombateLista");
+  if (!contenedor) return;
+
+  const armasEquipadas = obtenerArmasEquipadasCombate();
+  if (!armasEquipadas.length) {
+    contenedor.innerHTML = `<p class="ataques-combate-vacio">No hay armas equipadas.</p>`;
+    return;
+  }
+
+  contenedor.innerHTML = `
+    <div class="ataque-combate-cabecera">
+      <span>Nombre</span>
+      <span>Impactar</span>
+      <span>Daño</span>
+    </div>
+    ${armasEquipadas.map(arma => `
+      <button class="ataque-combate-fila" type="button" onclick="abrirPopupAtaqueEquipo('${arma.id}')">
+        <span>${textoSeguro(arma.nombre)}</span>
+        <span>${textoSeguro(obtenerFormulaImpactoEquipo(arma).split(" ")[0])}</span>
+        <span>${textoSeguro(describirDanoEquipo(arma) || "—")}</span>
+      </button>
+    `).join("")}
+  `;
+}
+
+function abrirPopupAtaqueEquipo(itemId) {
+  const arma = obtenerArmasEquipadasCombate().find(item => item.id === itemId);
+  if (!arma) return;
+  abrirPopupEquipo(`Ataque: ${arma.nombre}`, renderTarjetaEquipo({ ...arma, editable: false }));
+}
+
+function renderFilaDetalleEquipo(titulo, valor) {
+  if (!valor) return "";
+  return `
+    <div class="equipo-detalle-fila">
+      <span class="equipo-detalle-titulo">${textoSeguro(titulo)}</span>
+      <span class="equipo-detalle-valor">${textoSeguro(valor)}</span>
+    </div>
+  `;
+}
+
+function renderCuadriculaDetallesEquipo(item, config) {
+  const filas = [
+    renderFilaDetalleEquipo("Precio", item.precio || "—"),
+    renderFilaDetalleEquipo("Tipo", `${config.singular}${item.subtipo ? ` / ${item.subtipo}` : ""}`)
+  ];
+
+  if (item.tipo === "arma") {
+    filas.push(renderFilaDetalleEquipo("Impacto", obtenerFormulaImpactoEquipo(item)));
+    filas.push(renderFilaDetalleEquipo("Daño", describirDanoEquipo(item)));
+    filas.push(renderFilaDetalleEquipo("Daño secundario", describirDanoEquipo(item, true)));
+    if (item.distancia) filas.push(renderFilaDetalleEquipo("Distancia", item.distancia));
+  }
+
+  if (item.tipo === "armadura") {
+    filas.push(renderFilaDetalleEquipo("CA", obtenerFormulaCAEquipo(item)));
+  }
+
+  return `<div class="equipo-detalles-grid">${filas.filter(Boolean).join("")}</div>`;
+}
+
+function renderBonificacionesEquipo(item) {
+  const bonificaciones = normalizarBonificacionesEquipo(item.bonificaciones);
+  if (!bonificaciones.length) return "";
+  const etiquetasBonos = bonificaciones.map(bono => {
+    const destino = bono.statAfectada || bono.habilidadAfectada || bono.categoria || "CA";
+    const valor = bono.tipoDeEfecto === "competencia" ? bono.competencia : formatoValor(bono.valor);
+    return `<span class="equipo-etiqueta">${textoSeguro(bono.tipoDeEfecto)} · ${textoSeguro(destino)} · ${textoSeguro(valor)}</span>`;
+  }).join("");
+  return `<div class="equipo-etiquetas equipo-bonos-lista"><strong>Otros bonificadores:</strong> ${etiquetasBonos}</div>`;
+}
+
+function renderAccionesItemEquipo(item) {
+  const botonEquipado = item.editable && ["arma", "armadura"].includes(item.tipo)
+    ? `<button class="equipo-mini-btn equipo-equipado-btn ${item.equipado ? "equipado" : "desequipado"}" type="button" onclick="alternarEquipadoItem('${item.id}')">${item.equipado ? "Equipado" : "Desequipado"}</button>`
+    : "";
+  const botonesEdicion = item.editable
+    ? `<button class="equipo-mini-btn" type="button" onclick="abrirPopupEditarEquipo('${item.id}')">Editar</button>
+      <button class="equipo-mini-btn equipo-boton-rojo" type="button" onclick="abrirPopupConfirmarEliminarEquipo('${item.id}')">Eliminar</button>`
+    : "";
+  if (!botonEquipado && !botonesEdicion) return "";
+  
+  return `
+    <div class="equipo-item-acciones">
+      ${botonesEdicion}
+      ${botonEquipado}
+    </div>
+  `;
+}
+
+function renderTarjetaEquipo(item) {
+  const etiquetas = (item.etiquetas || []).map(etiqueta => `<span class="equipo-etiqueta">${textoSeguro(etiqueta)}</span>`).join("");
+  const config = CONFIG_EQUIPO[item.tipo] || CONFIG_EQUIPO.equipo;
+
+  return `
+    <article class="equipo-item ${item.editable && ["arma", "armadura"].includes(item.tipo) && !item.equipado ? "equipo-item-desequipado" : ""}">      <div class="equipo-item-cabecera">
+        <strong>${textoSeguro(item.nombre)}</strong>
+        <span class="equipo-tipo">${textoSeguro(config.singular)}${item.subtipo ? ` · ${textoSeguro(item.subtipo)}` : ""}</span>
+      </div>
+      <p class="equipo-descripcion">${textoSeguro(item.descripcion || "Sin descripción.")}</p>
+      ${renderCuadriculaDetallesEquipo(item, config)}
+      <p class="equipo-efectos"><strong>Efectos:</strong> ${textoSeguro(item.efectos || "—")}</p>
+      ${renderBonificacionesEquipo(item)}
+      <div class="equipo-etiquetas">${etiquetas || `<span class="equipo-etiqueta">Sin etiquetas</span>`}</div>
+      ${renderAccionesItemEquipo(item)}
+      </article>
+  `;
+}
+
+function renderSeccionEquipo(tipo, items) {
+  const config = CONFIG_EQUIPO[tipo];
+  const contenido = items.length
+    ? items.map(renderTarjetaEquipo).join("")
+    : `<p class="equipo-vacio">No hay ${config.titulo.toLowerCase()} registrados.</p>`;
+
+  return `
+    <details class="equipo-seccion" open>
+      <summary>
+        <button class="equipo-add-btn" type="button" onclick="event.preventDefault(); abrirPopupAgregarEquipo('${tipo}')" aria-label="Añadir ${config.singular}">+</button>
+        <span class="equipo-seccion-titulo">${config.titulo}</span>
+        <small>${items.length}</small>
+      </summary>
+      <div class="equipo-lista">${contenido}</div>
+    </details>
+  `;
+}
+
+function renderSintonizacion(items) {
+  asegurarDatosEquipoPersonaje();
+  const opcionesBase = `<option value="">— Sin objeto —</option>` + items
+    .map(item => `<option value="${textoSeguro(item.id)}">${textoSeguro(item.nombre)}</option>`)
+    .join("");
+
+  const slots = Array.from({ length: personajeActual.sintonizacionSlots }, (_, indice) => {
+    const seleccionado = personajeActual.sintonizados[indice] || "";
+    return `
+      <div class="sintonizacion-slot">
+        <label for="sintonizacionSlot${indice}">Slot ${indice + 1}</label>
+        <select id="sintonizacionSlot${indice}" onchange="cambiarSintonizacionSlot(${indice}, this.value)">
+          ${opcionesBase.replace(`value="${textoSeguro(seleccionado)}"`, `value="${textoSeguro(seleccionado)}" selected`)}
+        </select>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="sintonizacion-cabecera">
+      <h3>Sintonización</h3>
+      <button class="sintonizar-config-btn" type="button" onclick="abrirPopupSlotsSintonizacion()">Configurar slots</button>
+    </div>
+    ${personajeActual.sintonizacionSlots > 0 ? `<div class="sintonizacion-slots">${slots}</div>` : `<p class="sintonizacion-vacio">No hay slots de sintonización configurados.</p>`}
+  `;
+}
+
+function renderEquipo() {
+  asegurarDatosEquipoPersonaje();
+  const items = obtenerTodosLosItemsEquipo();
+  const itemsPorTipo = {
+    arma: items.filter(item => item.tipo === "arma"),
+    armadura: items.filter(item => item.tipo === "armadura"),
+    equipo: items.filter(item => item.tipo !== "arma" && item.tipo !== "armadura")
+  };
 
   panelVentanas.innerHTML = `
     <h2 class="titulo-panel">Equipo</h2>
-    ${todosLosObjetos.length === 0
-      ? `<p style="color:#6b5a53; text-align:center; margin-top:20px;">No hay objetos en el inventario.</p>`
-      : `<div class="equipo-lista">
-          ${todosLosObjetos.map(obj => `
-            <div class="equipo-item">
-              <strong>${obj.nombre}</strong>
-              <span class="equipo-tipo">${obj.tipo ?? ""}</span>
-              ${obj.bonifCA  ? `<small>+${obj.bonifCA} CA</small>` : ""}
-              ${obj.caBase   ? `<small>CA base: ${obj.caBase}</small>` : ""}
-            </div>
-          `).join("")}
-        </div>`
-    }
+    <div class="equipo-dashboard">
+      <div class="equipo-cajas-centrales">
+        <section class="equipo-caja-central">
+          <h3>Monedas</h3>
+          <div class="monedas-grid">
+            ${MONEDAS_DND.map(moneda => `
+              <button class="moneda-btn" type="button" onclick="abrirPopupMoneda('${moneda.id}')">
+                <span class="moneda-cantidad">${obtenerCantidadMoneda(moneda.id)}</span>
+                <span class="moneda-nombre">${moneda.nombre} (${moneda.etiqueta})</span>
+              </button>
+            `).join("")}
+          </div>
+        </section>
+        <section class="equipo-caja-central">
+          <h3>Equipamento</h3>
+          ${renderSeccionEquipo("arma", itemsPorTipo.arma)}
+          ${renderSeccionEquipo("armadura", itemsPorTipo.armadura)}
+          ${renderSeccionEquipo("equipo", itemsPorTipo.equipo)}
+        </section>
+        <section class="equipo-caja-central">
+          ${renderSintonizacion(items)}
+        </section>
+      </div>
+    </div>
   `;
 }
 
@@ -2650,8 +3866,8 @@ function actualizarResumenPersonaje() {
 
   document.getElementById("nombre-personaje").innerText = personajeActual.nombre || "Sin nombre";
   document.getElementById("info-personaje").innerText = `${razaNombre}, ${clasesTexto} · Nivel ${personajeActual.nivel}`;
-  document.getElementById("BC").innerText = `+${calcularBonificadorCompetencia()}`;
-  if (selectorNivelPersonaje) selectorNivelPersonaje.value = String(personajeActual.nivel);
+  actualizarDetalleCompetencia();
+  document.getElementById("BC").innerText = formatoValor(calcularBonificadorCompetencia());  if (selectorNivelPersonaje) selectorNivelPersonaje.value = String(personajeActual.nivel);
 }
 
 function refrescarFichaTrasBuild() {
@@ -2659,6 +3875,7 @@ function refrescarFichaTrasBuild() {
   refrescarEstadisticasPersonaje();
   actualizarResumenPersonaje();
   actualizarPuntosGolpe();
+  if (typeof actualizarVelocidad === "function") actualizarVelocidad();
   renderVida();
   if (typeof actualizarIniciativa === "function") actualizarIniciativa();
   if (typeof actualizarCA === "function") actualizarCA();

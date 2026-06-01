@@ -391,7 +391,45 @@ let libroDeReglasBasicas = {
         {
           nombre: "Arquetipo Marcial",
           nivelClase: 3,
+          descripcionResum: "A partir de nivel 3, puedes escojer un Arquetipo de Guerrero",
+          descripcion:`
+            A 3er nivel, elijes un arquetipo que encaje con tu forma de enfocar tus estilos y técnicas de combate. Tu arquetipo de otorga rasgos a 3er nivel, y de nuevo al 7, 10, 15 y 18 nivel.
+          `,
+          selecciones: [
+            {
+              id: "arquetipo_guerrero",
+              nombre: "Arquetipo Marcial",
+              tipo: "subclase",
+              cantidadSeleccionable: 1,
+              descripcion: "Escoge una de las siguientes Subclases:",
+              opciones: [
+                { id: "maestro_combate", nombre: "Maestro de Combate" },
+                { id: "campeon", nombre: "Campeón" },
+              ]
+            }
+          ]
+        },
+      ],
+      subclase: [
+        {
+          id: "campeon",
+          nombre: "Campeón",
+          descripcionResum: "+2 a las tiradas de ataque con armas a distancia.",
+          descripcion: `
+            Obtienes un bonificador +2 a las tiradas de ataque que hagas
+            con armas a distancia.
+          `,
+          rasgos: [
+            {
+            nombre: "popipo"
+            }
+          ]
+        },
+        {
+          id: "maestro_combate",
+          nombre: "Maestro de combate"
         }
+
       ]
     },
     {
@@ -421,31 +459,156 @@ let libroDeReglasBasicas = {
       ]
     }
   ],
+  armas: [
+    {
+      id: "espadaLarga",
+      nombre: "Espada larga",
+      descripcion: "Una hoja marcial equilibrada que puede blandirse con una o dos manos.",
+      precio: "15 po",
+      categoria: "arma",
+      subtipo: "Marcial cuerpo a cuerpo",
+      efectos: [
+        "Daño: 1d8 cortante",
+        "Versátil: 1d10 cortante"
+      ],
+      etiquetas: ["Versátil", "Marcial"],
+      sintonizable: false,
+      sintonizado: false
+    },
+    {
+      id: "arcoLargo",
+      nombre: "Arco largo",
+      descripcion: "Arco de gran alcance usado habitualmente por exploradores y soldados entrenados.",
+      precio: "50 po",
+      categoria: "arma",
+      subtipo: "Marcial a distancia",
+      efectos: [
+        "Daño: 1d8 perforante",
+        "Alcance: 150/600 pies"
+      ],
+      etiquetas: ["A dos manos", "Munición", "Pesada"],
+      sintonizable: false,
+      sintonizado: false
+    }
+  ],
   armaduras: [
     {
       id: "cuero",
       nombre: "Armadura de Cuero",
+      descripcion: "Armadura ligera de cuero endurecido que ofrece protección básica sin limitar demasiado el movimiento.",
+      precio: "10 po",
+      categoria: "armadura",
       tipo: "ligera",
-      caBase: 11
+      subtipo: "Ligera",
+      efectos: ["CA base: 11 + modificador de Destreza"],
+      etiquetas: ["Ligera"],
+      sintonizable: false,
+      sintonizado: false
     },
     {
       id: "mediaArmadura",
       nombre: "Armadura Media",
+      descripcion: "Protección intermedia que combina placas y piezas flexibles para resistir golpes fuertes.",
+      precio: "50 po",
+      categoria: "armadura",
       tipo: "media",
-      caBase: 15
-    }
-  ],
-  equipo: [
+      subtipo: "Media",
+      caBase: 15,
+      efectos: ["CA base: 15 + modificador de Destreza (máximo +2)"],
+      etiquetas: ["Media", "DES máx. +2"],
+      sintonizable: false,
+      sintonizado: false
+    },
     {
       id: "escudonormal",
       nombre: "Escudo",
+      descripcion: "Una defensa de mano que se embraza para desviar ataques y mejorar la Clase de Armadura.",
+      precio: "10 po",
+      categoria: "equipo",
       tipo: "escudo",
-      bonifCA: 2
+      subtipo: "Escudo",
+      bonifCA: 2,
+      efectos: ["+2 a la CA mientras lo portas"],
+      etiquetas: ["Defensivo", "Mano ocupada"],
+      sintonizable: false,
+      sintonizado: false
     }
   ],
   dotes: [
     {    }
   ],
+  estados: [
+    {
+      id: "agarrado",
+      nombre: "Agarrado",
+      descripcion: `La velocidad de una criatura agarrada pasa a ser 0 y no puede beneficiarse de bonificadores a su velocidad. El estado termina si quien agarra queda incapacitado o si un efecto aleja a la criatura agarrada del alcance de quien la agarra.`
+    },
+    {
+      id: "apresado",
+      nombre: "Apresado",
+      descripcion: `La velocidad de una criatura apresada pasa a ser 0. Las tiradas de ataque contra ella tienen ventaja y sus propias tiradas de ataque tienen desventaja. Además, tiene desventaja en las tiradas de salvación de Destreza.`
+    },
+    {
+      id: "aturdido",
+      nombre: "Aturdido",
+      descripcion: `Una criatura aturdida está incapacitada, no puede moverse y solo puede hablar vacilantemente. Falla automáticamente las tiradas de salvación de Fuerza y Destreza, y las tiradas de ataque contra ella tienen ventaja.`
+    },
+    {
+      id: "asustado",
+      nombre: "Asustado",
+      descripcion: `Una criatura asustada tiene desventaja en pruebas de característica y tiradas de ataque mientras la fuente de su miedo esté en su línea de visión. No puede acercarse voluntariamente a la fuente de su miedo.`
+    },
+    {
+      id: "cegado",
+      nombre: "Cegado",
+      descripcion: `Una criatura cegada no puede ver y falla automáticamente cualquier prueba de característica que requiera la vista. Las tiradas de ataque contra ella tienen ventaja y sus propias tiradas de ataque tienen desventaja.`
+    },
+    {
+      id: "derribado",
+      nombre: "Derribado",
+      descripcion: `Una criatura derribada solo puede moverse gateando, salvo que se levante. Tiene desventaja en las tiradas de ataque. Las tiradas de ataque contra ella tienen ventaja si el atacante está a 5 pies o menos; si no, tienen desventaja.`
+    },
+    {
+      id: "ensordecido",
+      nombre: "Ensordecido",
+      descripcion: `Una criatura ensordecida no puede oír y falla automáticamente cualquier prueba de característica que requiera el oído.`
+    },
+    {
+      id: "envenenado",
+      nombre: "Envenenado",
+      descripcion: `Una criatura envenenada tiene desventaja en las tiradas de ataque y en las pruebas de característica.`
+    },
+    {
+      id: "hechizado",
+      nombre: "Hechizado",
+      descripcion: `Una criatura hechizada no puede atacar a quien la hechizó ni elegirlo como objetivo de aptitudes o efectos mágicos dañinos. Quien hechiza tiene ventaja en pruebas de característica para interactuar socialmente con ella.`
+    },
+    {
+      id: "incapacitado",
+      nombre: "Incapacitado",
+      descripcion: `Una criatura incapacitada no puede realizar acciones ni reacciones.`
+    },
+    {
+      id: "inconsciente",
+      nombre: "Inconsciente",
+      descripcion: `Una criatura inconsciente está incapacitada, no puede moverse ni hablar, no es consciente de su entorno, suelta lo que sostenga y cae derribada. Falla automáticamente salvaciones de Fuerza y Destreza; los ataques contra ella tienen ventaja y todo ataque que impacte desde 5 pies o menos es crítico.`
+    },
+    {
+      id: "invisible",
+      nombre: "Invisible",
+      descripcion: `Una criatura invisible es imposible de ver sin ayuda de magia o sentidos especiales. A efectos de esconderse está muy oscurecida. Sus tiradas de ataque tienen ventaja y las tiradas de ataque contra ella tienen desventaja.`
+    },
+    {
+      id: "paralizado",
+      nombre: "Paralizado",
+      descripcion: `Una criatura paralizada está incapacitada y no puede moverse ni hablar. Falla automáticamente salvaciones de Fuerza y Destreza. Los ataques contra ella tienen ventaja y todo ataque que impacte desde 5 pies o menos es crítico.`
+    },
+    {
+      id: "petrificado",
+      nombre: "Petrificado",
+      descripcion: `Una criatura petrificada se transforma, junto con cualquier objeto no mágico que vista o porte, en una sustancia sólida inanimada. Está incapacitada, no puede moverse ni hablar, no es consciente, tiene resistencia a todo daño y es inmune al veneno y la enfermedad.`
+    }
+  ]
   
 };
 
