@@ -81,3 +81,316 @@
   .modal-grid { grid-template-columns: 1fr; }
   .rasgo-nivel-grupo { flex-direction:column; }
 }
+
+
+/* Navegación reorganizada del libro de reglas */
+.modal-contenido {
+  width: min(1120px, 96%);
+}
+.modal-main {
+  min-height: 520px;
+}
+.libro-inicio {
+  background: linear-gradient(135deg, #fffaf2 0%, #f6ead8 100%);
+  border: 1px solid #e0d0c0;
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.55);
+  padding: 22px;
+  text-align: left;
+}
+.libro-eyebrow {
+  color: #df702c;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.libro-inicio h3 {
+  color: #5a4035;
+  font-family: Georgia, serif;
+  font-size: 30px;
+  margin: 6px 0 10px;
+}
+.libro-descripcion {
+  color: #5a4035;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0;
+  max-width: 760px;
+}
+.libro-menu-titulo {
+  color: #5a4035;
+  font-family: Georgia, serif;
+  font-size: 18px;
+  margin: 14px 0 10px;
+}
+.libro-menu {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.libro-menu-btn {
+  background: #fff8ed;
+  border: 1px solid #d7c3ad;
+  border-left: 5px solid #5a4035;
+  border-radius: 14px;
+  box-shadow: 0 6px 14px rgba(90, 64, 53, 0.08);
+  color: #3d2b20;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 96px;
+  padding: 16px;
+  text-align: left;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.libro-menu-btn strong {
+  color: #5a4035;
+  font-family: Georgia, serif;
+  font-size: 20px;
+}
+.libro-menu-btn span {
+  color: #6b5a53;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.libro-menu-btn:hover {
+  border-left-color: #df702c;
+  box-shadow: 0 10px 20px rgba(90, 64, 53, 0.14);
+  transform: translateY(-2px);
+}
+.submenu-header {
+  align-items: flex-start;
+  background: #fff8ed;
+  border: 1px solid #e0d0c0;
+  border-radius: 14px;
+  padding: 12px;
+}
+.submenu-titulos {
+  flex: 1;
+  text-align: left;
+}
+.submenu-titulos h3 {
+  color: #5a4035;
+  font-family: Georgia, serif;
+  font-size: 24px;
+  margin: 2px 0;
+}
+.submenu-titulos p {
+  color: #6b5a53;
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+.reglas-buscador-caja {
+  background: #fffaf2;
+  border: 1px solid #e0d0c0;
+  border-radius: 14px;
+  margin-bottom: 12px;
+  padding: 14px;
+  text-align: left;
+}
+.reglas-buscador-caja label {
+  color: #5a4035;
+  display: flex;
+  flex-direction: column;
+  font-weight: 800;
+  gap: 8px;
+}
+.reglas-buscador-caja input {
+  background: white;
+  border: 1px solid #dccbb0;
+  border-radius: 999px;
+  color: #3d2b20;
+  font-size: 14px;
+  padding: 10px 14px;
+  width: 100%;
+}
+.reglas-lista-columna {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.reglas-lista-card {
+  background: white;
+  border: 1px solid #e0d0c0;
+  border-left: 4px solid #5a4035;
+  border-radius: 12px;
+  color: #3d2b20;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 13px 15px;
+  text-align: left;
+  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  width: 100%;
+}
+.reglas-lista-card:hover {
+  background: #fdfaf5;
+  border-left-color: #df702c;
+  transform: translateX(2px);
+}
+.reglas-lista-card strong {
+  color: #5a4035;
+  font-family: Georgia, serif;
+  font-size: 17px;
+}
+.reglas-lista-card span {
+  color: #6b5a53;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.reglas-lista-card small {
+  color: #8b7355;
+  font-size: 12px;
+  font-weight: 700;
+}
+.reglas-detalle-intro {
+  background: #fffaf2;
+  border: 1px solid #e0d0c0;
+  border-radius: 14px;
+  margin-bottom: 14px;
+  padding: 16px;
+  text-align: left;
+}
+.reglas-rasgos-columna {
+  text-align: left;
+}
+.reglas-rasgo-card {
+  width: 100%;
+}
+.reglas-seleccion-preview {
+  cursor: default;
+}
+.reglas-item-detalle {
+  background: #fffaf2;
+  border: 1px solid #e0d0c0;
+  border-radius: 14px;
+  padding: 16px;
+  text-align: left;
+}
+.reglas-actions-detalle {
+  margin-top: 12px;
+}
+.reglas-actions-detalle button,
+.subclase-card button {
+  background: #5a4035;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 8px 12px;
+}
+@media (max-width:700px) {
+  .libro-menu { grid-template-columns: 1fr; }
+  .modal-contenido { padding: 12px; }
+}
+
+
+/* Modo edición contextual del libro de reglas */
+.reglas-edit-mode-toolbar {
+  align-items: center;
+  background: rgba(255, 248, 237, 0.82);
+  border: 1px solid #e0d0c0;
+  border-radius: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 10px;
+}
+.reglas-edit-mode-toolbar span {
+  color: #6b5a53;
+  font-size: 13px;
+}
+.reglas-edit-toggle,
+.reglas-edit-action,
+.reglas-editor-actions button {
+  background: #5a4035;
+  border: none;
+  border-radius: 999px;
+  color: white;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 9px 14px;
+}
+.reglas-edit-toggle.active {
+  background: #2f6f46;
+}
+.reglas-edit-actions {
+  align-items: center;
+  background: #fff8ed;
+  border: 1px dashed #c7a89a;
+  border-radius: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px;
+}
+.reglas-edit-action {
+  background: #df702c;
+  box-shadow: 0 4px 10px rgba(90, 64, 53, 0.12);
+}
+.reglas-editor-form {
+  background: #fffaf2;
+  border: 1px solid #e0d0c0;
+  border-radius: 16px;
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  text-align: left;
+}
+.reglas-editor-help {
+  background: #fbf5ef;
+  border-left: 4px solid #df702c;
+  border-radius: 10px;
+  color: #5a4035;
+  line-height: 1.45;
+  margin: 0;
+  padding: 10px 12px;
+}
+.reglas-editor-form label {
+  color: #5a4035;
+  display: flex;
+  flex-direction: column;
+  font-weight: 800;
+  gap: 6px;
+}
+.reglas-editor-form input,
+.reglas-editor-form textarea {
+  background: white;
+  border: 1px solid #dccbb0;
+  border-radius: 10px;
+  color: #3d2b20;
+  font: inherit;
+  padding: 10px 12px;
+  width: 100%;
+}
+.reglas-editor-form textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+.reglas-editor-avanzado {
+  background: #fbf5ef;
+  border: 1px solid #e0d0c0;
+  border-radius: 12px;
+  padding: 10px;
+}
+.reglas-editor-avanzado summary {
+  color: #5a4035;
+  cursor: pointer;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.reglas-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.reglas-editor-actions button.secundario {
+  background: #8b7355;
+}
