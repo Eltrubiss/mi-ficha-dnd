@@ -55,7 +55,6 @@
 
         /* 2. Un truco nuevo: Le damos ancho solo a las cajas de esta fila */
         .fila-extra .caja-extra {
-            /* Como Flexbox no tiene el minmax() de Grid, le decimos nosotros el tamaño */
             min-width: 40px; 
             max-width: 120px;
             flex: 1; /* Permite que crezcan un poco para compartir el espacio */
@@ -1816,6 +1815,30 @@
         }
         details[open] > summary::before {
             transform: rotate(90deg); /* La flecha apunta hacia abajo cuando se abre */
+        }
+        /* Ajustes específicos para pantallas pequeñas: rasgos y tarjetas */
+        @media (max-width: 600px) {
+            .desplegable-contenido {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                gap: 8px;
+            }
+            .rasgo-item {
+                padding: 6px 8px;
+            }
+            .rasgo-tarjeta-boton {
+                padding: 8px 10px;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            .rasgo-tarjeta-titulo { font-size: 13px; }
+            .rasgo-tarjeta-resumen {
+                font-size: 12px;
+                white-space: normal; /* permitir salto de línea en móviles */
+                overflow: visible;
+                text-overflow: clip;
+            }
+            .rasgo-seleccionado-ficha { margin-left: 0; }
         }
     </style>
 </head>
