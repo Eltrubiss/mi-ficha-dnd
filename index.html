@@ -1841,8 +1841,10 @@
             .rasgo-seleccionado-ficha { margin-left: 0; }
         }
     </style>
+    <link rel="stylesheet" href="reglas.css">
 </head>
 <body>
+    <button id="btnLibroReglas" class="btn-libro-reglas" title="Abrir Libro de reglas">📚</button>
     <section class="selector-inicial-personaje" id="vistaSelectorPersonaje">
         <div class="selector-personaje-barra">
             <div class="campo-buscador-personaje">
@@ -1992,6 +1994,7 @@
                 <button id="competenciasBtn" type="button">Competencias</button>
                 <button id="rasgosBtn" type="button">Rasgos</button>
                 <button id="hechizosBtn" type="button">Conjuros</button>                <button id="equipoBtn" type="button">Equipo</button>
+                <button id="abrirLibroBtn" type="button">Libro reglas</button>
 
             </div>
             <div class="panel-ventanas" style="z-index: 1;"></div>
@@ -2004,6 +2007,48 @@
             <p class="build-intro">Planifica el personaje por niveles. El nivel 1 reúne identidad, raza, subraza y clase; los niveles siguientes muestran los rasgos desbloqueados según la clase.</p>
             <div id="buildAvisos"></div>
             <div id="buildNiveles"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Libro de reglas -->
+    <div id="modal-reglas" class="modal oculto" role="dialog" aria-modal="true" aria-labelledby="modalReglasTitulo">
+        <div class="modal-contenido">
+            <button id="modalReglasCerrar" class="modal-cerrar" aria-label="Cerrar">×</button>
+            <h2 id="modalReglasTitulo">Libro de reglas & Configuración</h2>
+            <div class="modal-grid">
+                <aside class="modal-sidebar">
+                    <div class="libros-encabezado">
+                        <strong>Libros</strong>
+                        <button id="btnNuevoLibro" title="Crear nuevo libro">＋</button>
+                    </div>
+                    <div id="libros-lista" class="libros-lista"></div>
+                    <hr />
+                    <button class="categoria-btn" data-categoria="rasgos">Rasgos</button>
+                    <button class="categoria-btn" data-categoria="dotes">Dotes</button>
+                    <button class="categoria-btn" data-categoria="equipo">Equipo</button>
+                    <button class="categoria-btn" data-categoria="clases">Clases</button>
+                    <hr />
+                    <button id="btnExportarReglas">Exportar</button>
+                    <button id="btnImportarReglas">Importar</button>
+                </aside>
+                <main class="modal-main">
+                    <section id="reglas-lista" class="reglas-lista"></section>
+                    <section class="reglas-form">
+                        <h3 id="reglas-form-titulo">Agregar item</h3>
+                        <label>Nombre<input id="regla-nombre" type="text" /></label>
+                        <label>Descripción<textarea id="regla-descripcion"></textarea></label>
+                        <label>Fuente<input id="regla-fuente" type="text" placeholder="opcional" /></label>
+                        <div class="reglas-form-controls">
+                            <select id="regla-categoria">
+                                <option value="rasgos">Rasgos</option>
+                                <option value="dotes">Dotes</option>
+                                <option value="equipo">Equipo</option>
+                            </select>
+                            <button id="btnAgregarRegla">Agregar</button>
+                        </div>
+                    </section>
+                </main>
+            </div>
         </div>
     </div>
 
@@ -2029,6 +2074,7 @@
     <script src="datos.js"></script>
     <script src="personajeDatos.js"></script>
     <script src="logica.js"></script>
+    <script src="reglas.js"></script>
     
 
 </body>

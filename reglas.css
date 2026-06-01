@@ -1,0 +1,83 @@
+/* Estilos para el modal del Libro de reglas */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.modal.oculto { display: none; }
+.modal-contenido {
+  background: #fffaf2;
+  color: #3d2b20;
+  width: min(980px, 96%);
+  max-height: 86vh;
+  overflow: auto;
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+}
+.modal-cerrar {
+  float: right;
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  cursor: pointer;
+}
+.modal-grid {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.modal-sidebar { display:flex; flex-direction:column; gap:8px; }
+.libros-encabezado { display:flex; justify-content:space-between; align-items:center; }
+.libros-lista { display:flex; flex-direction:column; gap:6px; max-height:220px; overflow:auto; margin-bottom:6px; }
+.libro-item { display:flex; justify-content:space-between; align-items:center; gap:6px; padding:6px 8px; border:1px solid #e0d0c0; background:#fff8ed; border-radius:8px; }
+.libro-item.active { background:#df702c; color:white; }
+#btnNuevoLibro { padding:4px 8px; border-radius:6px; border:none; background:#5a4035; color:white; cursor:pointer; }
+.modal-sidebar .categoria-btn { padding:8px 10px; border-radius:8px; border:1px solid #e0d0c0; background:#fff8ed; cursor:pointer; font-weight:700; }
+.modal-sidebar .categoria-btn.active { background:#df702c; color:white; }
+.modal-main { background: #fbf5ef; border-radius:8px; padding:12px; }
+.reglas-lista { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+.regla-item { background:white; border:1px solid #e0d0c0; border-left:4px solid #5a4035; padding:10px; display:flex; justify-content:space-between; gap:8px; align-items:center; }
+.regla-datos { flex:1; }
+.reglas-form label { display:block; margin-bottom:8px; }
+.reglas-form input, .reglas-form textarea, .reglas-form select { width:100%; padding:8px; border:1px solid #dccbb0; border-radius:6px; background:white; }
+.reglas-form-controls { display:flex; gap:8px; align-items:center; margin-top:8px; }
+.btn-libro-reglas { position:fixed; right:18px; bottom:18px; width:56px; height:56px; border-radius:999px; border:none; background:#5a4035; color:white; font-size:22px; cursor:pointer; box-shadow:0 8px 18px rgba(0,0,0,0.2); }
+.reglas-form-controls button, #btnExportarReglas, #btnImportarReglas { padding:8px 10px; border-radius:8px; border:none; background:#5a4035; color:white; cursor:pointer; font-weight:700; }
+.reglas-actions { display:flex; gap:6px; }
+.regla-meta { font-size:12px; color:#6b5a53; }
+.submenu-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:12px; border-bottom:1px solid #e0d0c0; margin-bottom:14px; }
+.submenu-back { border:none; background:#5a4035; color:white; border-radius:999px; padding:8px 12px; cursor:pointer; font-weight:700; }
+.clase-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+.clase-tab-btn { border:1px solid #e0d0c0; background:#fff8ed; color:#3d2b20; border-radius:8px; padding:8px 12px; cursor:pointer; font-weight:700; }
+.clase-tab-btn.active { background:#df702c; color:white; border-color:#df702c; }
+.clase-tab-contenido { display:flex; flex-direction:column; gap:12px; }
+.clases-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; }
+.clase-card, .rasgo-card, .subclase-card { background:white; border:1px solid #e0d0c0; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:8px; }
+.clase-card button { align-self:flex-start; border:none; background:#5a4035; color:white; border-radius:8px; padding:8px 12px; cursor:pointer; }
+.clase-meta { font-size:12px; color:#6b5a53; }
+.clase-card-desc { font-size:13px; color:#5a4035; line-height:1.4; }
+.rasgo-nivel-grupo { display:flex; flex-direction:column; gap:8px; }
+.rasgo-nivel-titulo { width:100%; font-size:14px; font-weight:700; color:#5a4035; }
+.rasgo-nivel-lista { display:flex; flex-direction:column; gap:6px; padding-left:12px; }
+.rasgo-link { text-align:left; border:none; background:transparent; color:#5a4035; cursor:pointer; padding:8px 10px; border-radius:8px; transition:background 0.15s ease; }
+.rasgo-link:hover { background:#f3ead7; }
+.rasgo-lista-item { background:#fbf5ef; padding:10px; border-radius:10px; border:1px solid #e0d0c0; }
+.detalle-rasgo-descripcion { color:#3d2b20; line-height:1.5; }
+.seleccion-card { background:#fff; border:1px solid #e0d0c0; border-radius:12px; padding:12px; margin-top:10px; }
+.subclase-desc { font-size:13px; color:#5a4035; line-height:1.4; }
+.seleccion-contenido { background:#fbf5ef; border:1px dashed #c7a89a; border-radius:10px; padding:10px; }
+.seleccion-titulo { font-weight:700; margin-bottom:4px; }
+.seleccion-opciones { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.seleccion-opcion { background:#fff; border:1px solid #e0d0c0; border-radius:999px; padding:5px 10px; font-size:12px; }
+.subclase-rasgos { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+.subclase-rasgo { background:#fbf5ef; border:1px solid #e0d0b0; border-radius:10px; padding:10px; }
+@media (max-width:700px) {
+  .modal-grid { grid-template-columns: 1fr; }
+  .rasgo-nivel-grupo { flex-direction:column; }
+}
