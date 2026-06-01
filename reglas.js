@@ -246,6 +246,7 @@
     toolbar.appendChild(toggleEdit); toolbar.appendChild(hint);
     if(editMode){
       toolbar.appendChild(crearBotonAccionEdicion('Editar manual', ()=> abrirEditorRegla({ entity:'manual', mode:'edit', title:'Editar manual', target:{ kind:'manual' } })));
+      toolbar.appendChild(crearBotonAccionEdicion('Eliminar manual', ()=> confirmarAccionReglas({ titulo: 'Eliminar manual', mensaje: `¿Seguro que quieres eliminar el manual "${libro.nombre || libro.id}"? Esta acción no se puede deshacer.`, confirmar: 'Eliminar manual', onConfirm: ()=>{ if(!window.libroReglas) return; const idx = window.libroReglas.findIndex(l=> l.id === libro.id); if(idx > -1) window.libroReglas.splice(idx,1); save(); cerrarModal(); renderLibros(); } })));
     }
     cont.appendChild(toolbar);    const hr = document.createElement('hr'); cont.appendChild(hr);
     const label = document.createElement('h4'); label.className='libro-menu-titulo'; label.textContent='Selección de submenús'; cont.appendChild(label);
@@ -545,10 +546,12 @@
         rasgos: [
           { label: 'Editar clase', onClick: ()=> abrirEditorRegla({ entity:'clase', mode:'edit', title:'Editar clase', target:{ kind:'clase', classId } }) },
           { label: '+ Añadir rasgo de clase', onClick: ()=> abrirEditorRegla({ entity:'rasgo', title:'Nuevo rasgo de clase', parent:{ kind:'clase', classId } }) }
+          ,{ label: 'Eliminar clase', onClick: ()=> confirmarAccionReglas({ titulo: 'Eliminar clase', mensaje: `¿Seguro que quieres eliminar la clase "${clase?.nombre || classId}"? Esta acción no se puede deshacer.`, confirmar: 'Eliminar clase', onConfirm: ()=>{ const libroAct = currentLibro(); if(libroAct && libroAct.clases){ delete libroAct.clases[classId]; save(); popScreen(); renderCategoria('clases'); } } }) }
         ],
         subitems: [
           { label: 'Editar clase', onClick: ()=> abrirEditorRegla({ entity:'clase', mode:'edit', title:'Editar clase', target:{ kind:'clase', classId } }) },
           { label: '+ Nueva subclase', onClick: ()=> abrirEditorRegla({ entity:'subclase', title:'Nueva subclase', parent:{ classId } }) }
+          ,{ label: 'Eliminar clase', onClick: ()=> confirmarAccionReglas({ titulo: 'Eliminar clase', mensaje: `¿Seguro que quieres eliminar la clase "${clase?.nombre || classId}"? Esta acción no se puede deshacer.`, confirmar: 'Eliminar clase', onConfirm: ()=>{ const libroAct = currentLibro(); if(libroAct && libroAct.clases){ delete libroAct.clases[classId]; save(); popScreen(); renderCategoria('clases'); } } }) }
         ]
       }
     });
@@ -573,10 +576,12 @@
         rasgos: [
           { label: 'Editar raza', onClick: ()=> abrirEditorRegla({ entity:'raza', mode:'edit', title:'Editar raza', target:{ kind:'raza', raceId } }) },
           { label: '+ Añadir rasgo racial', onClick: ()=> abrirEditorRegla({ entity:'rasgo', title:'Nuevo rasgo racial', parent:{ kind:'raza', raceId } }) }
+          ,{ label: 'Eliminar raza', onClick: ()=> confirmarAccionReglas({ titulo: 'Eliminar raza', mensaje: `¿Seguro que quieres eliminar la raza "${raza?.nombre || raceId}"? Esta acción no se puede deshacer.`, confirmar: 'Eliminar raza', onConfirm: ()=>{ const libroAct = currentLibro(); libroAct.razas = (libroAct.razas||[]).filter(r=> (r.id||r.nombre) !== raceId); save(); popScreen(); renderCategoria('razas'); } }) }
         ],
         subitems: [
           { label: 'Editar raza', onClick: ()=> abrirEditorRegla({ entity:'raza', mode:'edit', title:'Editar raza', target:{ kind:'raza', raceId } }) },
           { label: '+ Nueva subraza', onClick: ()=> abrirEditorRegla({ entity:'subraza', title:'Nueva subraza', parent:{ raceId } }) }
+          ,{ label: 'Eliminar raza', onClick: ()=> confirmarAccionReglas({ titulo: 'Eliminar raza', mensaje: `¿Seguro que quieres eliminar la raza "${raza?.nombre || raceId}"? Esta acción no se puede deshacer.`, confirmar: 'Eliminar raza', onConfirm: ()=>{ const libroAct = currentLibro(); libroAct.razas = (libroAct.razas||[]).filter(r=> (r.id||r.nombre) !== raceId); save(); popScreen(); renderCategoria('razas'); } }) }
         ]
       }
     });
@@ -596,7 +601,8 @@
       screenType: 'subclaseDetail',
       editActionsByTab: { rasgos: [
         { label: 'Editar subclase', onClick: ()=> abrirEditorRegla({ entity:'subclase', mode:'edit', title:'Editar subclase', target:{ kind:'subclase', classId, subclaseId } }) },
-        { label: '+ Añadir rasgo de subclase', onClick: ()=> abrirEditorRegla({ entity:'rasgo', title:'Nuevo rasgo de subclase', parent:{ kind:'subclase', classId, subclaseId } }) }
+        { label: '+ Añadir rasgo de subclase', onClick: ()=> abrirEditorRegla({ entity:'rasgo', title:'Nuevo rasgo de subclase', parent:{ kind:'subclase', classId, subclaseId } }) },
+        { label: 'Eliminar subclase', onClick: ()=> confirmarAccionReglas({ titulo: 'Eliminar subclase', mensaje: `¿Seguro que quieres eliminar la subclase "${sub?.nombre || subclaseId}"? Esta acción no se puede deshacer.`, confirmar: 'Eliminar subclase', onConfirm: ()=>{ const libroAct = currentLibro(); const claseAct = libroAct?.clases?.[classId]; if(claseAct){ const arr = obtenerListaSubclasesEditable(claseAct); const idx = arr.findIndex(x=> (x.id||x.nombre) === subclaseId); if(idx > -1) arr.splice(idx,1); save(); popScreen(); renderClaseDetail(classId); } } }) }
       ] }
     });
   }
@@ -615,7 +621,8 @@
       screenType: 'subrazaDetail',
       editActionsByTab: { rasgos: [
         { label: 'Editar subraza', onClick: ()=> abrirEditorRegla({ entity:'subraza', mode:'edit', title:'Editar subraza', target:{ kind:'subraza', raceId, subraceId } }) },
-        { label: '+ Añadir rasgo de subraza', onClick: ()=> abrirEditorRegla({ entity:'rasgo', title:'Nuevo rasgo de subraza', parent:{ kind:'subraza', raceId, subraceId } }) }
+        { label: '+ Añadir rasgo de subraza', onClick: ()=> abrirEditorRegla({ entity:'rasgo', title:'Nuevo rasgo de subraza', parent:{ kind:'subraza', raceId, subraceId } }) },
+        { label: 'Eliminar subraza', onClick: ()=> confirmarAccionReglas({ titulo: 'Eliminar subraza', mensaje: `¿Seguro que quieres eliminar la subraza "${sub?.nombre || subraceId}"? Esta acción no se puede deshacer.`, confirmar: 'Eliminar subraza', onConfirm: ()=>{ const libroAct = currentLibro(); const razaAct = (libroAct?.razas||[]).find(r=> (r.id||r.nombre) === raceId); if(razaAct){ razaAct.subrazas = razaAct.subrazas || []; const idx = razaAct.subrazas.findIndex(x=> (x.id||x.nombre) === subraceId); if(idx > -1) razaAct.subrazas.splice(idx,1); save(); popScreen(); renderRazaDetail(raceId); } } }) }
       ] }
     });
   }
@@ -820,7 +827,7 @@
     if(screen.entity === 'clase'){
       const dado = Number(form.elements.dadoDeGolpe.value);
       if(dado) data.dadoDeGolpe = dado;
-      if(esModoEdicionEditor(screen)){
+      if(!esModoEdicionEditor(screen)){
         data.rasgos = [];
         data.subclase = [];
       }
@@ -828,7 +835,7 @@
     if(screen.entity === 'raza'){
       const velocidad = Number(form.elements.velocidad.value);
       if(velocidad) data.velocidad = velocidad;
-      if(esModoEdicionEditor(screen)){
+      if(!esModoEdicionEditor(screen)){
         data.rasgos = [];
         data.subrazas = [];
       }
@@ -856,14 +863,30 @@
     if(!data.nombre) return alert('Introduce un nombre.');
 
     let guardado = false;
-    if(esModoEdicionEditor(screen)) guardado = actualizarEntidad(libro, screen, data);
-    else if(screen.entity === 'clase') guardado = guardarClase(libro, data);
-    if(screen.entity === 'clase') guardado = guardarClase(libro, data);
-    else if(screen.entity === 'raza') guardado = guardarRaza(libro, data);
-    else if(screen.entity === 'subclase') guardado = guardarSubclase(libro, screen.parent, data);
-    else if(screen.entity === 'subraza') guardado = guardarSubraza(libro, screen.parent, data);
-    else if(screen.entity === 'rasgo') guardado = guardarRasgo(libro, screen.parent, data);
-    else return alert('Tipo de elemento no soportado.');
+    if(esModoEdicionEditor(screen)){
+      guardado = actualizarEntidad(libro, screen, data);
+    } else {
+      switch(screen.entity){
+        case 'clase':
+          guardado = guardarClase(libro, data);
+          break;
+        case 'raza':
+          guardado = guardarRaza(libro, data);
+          break;
+        case 'subclase':
+          guardado = guardarSubclase(libro, screen.parent, data);
+          break;
+        case 'subraza':
+          guardado = guardarSubraza(libro, screen.parent, data);
+          break;
+        case 'rasgo':
+          guardado = guardarRasgo(libro, screen.parent, data);
+          break;
+        default:
+          alert('Tipo de elemento no soportado.');
+          return;
+      }
+    }
 
     if(!guardado) return;
     save();
@@ -879,42 +902,42 @@
     }
     const item = obtenerItemEditor(screen);
     if(!item){ alert('Elemento no encontrado.'); return false; }
-    const actualizado = { ...item, ...data };
 
     if(screen.entity === 'clase'){
       const oldId = target.classId;
-      actualizado.id = crearIdUnico(actualizado.id, id=> id !== oldId && Boolean(libro.clases[id]));
-      if(actualizado.id !== oldId){ delete libro.clases[oldId]; actualizarPantallaAnterior('classId', actualizado.id); }
-      libro.clases[actualizado.id] = actualizado;
+      const newId = crearIdUnico(data.id, id=> id !== oldId && Boolean(libro.clases[id]));
+      Object.assign(item, data, { id: newId });
+      if(newId !== oldId){ delete libro.clases[oldId]; libro.clases[newId] = item; actualizarPantallaAnterior('classId', newId); }
+      else { libro.clases[newId] = item; }
       return true;
     }
     if(screen.entity === 'raza'){
       const oldId = target.raceId;
-      actualizado.id = crearIdUnico(actualizado.id, id=> id !== oldId && (libro.razas || []).some(r=> (r.id || r.nombre) === id));
-      Object.assign(item, actualizado);
-      if(actualizado.id !== oldId) actualizarPantallaAnterior('raceId', actualizado.id);
+      const newId = crearIdUnico(data.id, id=> id !== oldId && (libro.razas || []).some(r=> (r.id || r.nombre) === id));
+      Object.assign(item, data, { id: newId });
+      if(newId !== oldId) actualizarPantallaAnterior('raceId', newId);
       return true;
     }
     if(screen.entity === 'subclase'){
-      const clase = libro.clases?.[target.classId];
+      const clase = buscarClase(target.classId) || buscarClase(target.className);
       const subclases = obtenerListaSubclasesEditable(clase);
       const oldId = target.subclaseId;
-      actualizado.id = crearIdUnico(actualizado.id, id=> id !== oldId && subclases.some(s=> (s.id || s.nombre) === id));
-      Object.assign(item, actualizado);
-      if(actualizado.id !== oldId) actualizarPantallaAnterior('subclaseId', actualizado.id);
+      const newId = crearIdUnico(data.id, id=> id !== oldId && subclases.some(s=> (s.id || s.nombre) === id));
+      Object.assign(item, data, { id: newId });
+      if(newId !== oldId) actualizarPantallaAnterior('subclaseId', newId);
       return true;
     }
     if(screen.entity === 'subraza'){
-      const raza = (libro.razas || []).find(r=> (r.id || r.nombre) === target.raceId);
+      const raza = buscarRaza(target.raceId) || buscarRaza(target.raceName);
       const subrazas = raza?.subrazas || [];
       const oldId = target.subraceId;
-      actualizado.id = crearIdUnico(actualizado.id, id=> id !== oldId && subrazas.some(s=> (s.id || s.nombre) === id));
-      Object.assign(item, actualizado);
-      if(actualizado.id !== oldId) actualizarPantallaAnterior('subraceId', actualizado.id);
+      const newId = crearIdUnico(data.id, id=> id !== oldId && subrazas.some(s=> (s.id || s.nombre) === id));
+      Object.assign(item, data, { id: newId });
+      if(newId !== oldId) actualizarPantallaAnterior('subraceId', newId);
       return true;
     }
     if(screen.entity === 'rasgo'){
-      Object.assign(item, actualizado);
+      Object.assign(item, data);
       return true;
     }
     return false;
@@ -992,31 +1015,38 @@
 
   function obtenerDestinoRasgos(libro, parent){
     if(parent?.kind === 'categoria'){
+      libro.categorias = libro.categorias || {};
       libro.categorias[parent.cat] = libro.categorias[parent.cat] || [];
       return libro.categorias[parent.cat];
     }
+
+    const classId = parent?.classId || parent?.className;
+    const raceId = parent?.raceId || parent?.raceName;
+    const subclaseId = parent?.subclaseId || parent?.subclaseName;
+    const subraceId = parent?.subraceId || parent?.subraceName;
+
     if(parent?.kind === 'clase'){
-      const clase = libro.clases?.[parent.classId];
+      const clase = buscarClase(classId);
       if(!clase) return null;
       clase.rasgos = clase.rasgos || [];
       return clase.rasgos;
     }
     if(parent?.kind === 'subclase'){
-      const clase = libro.clases?.[parent.classId];
-      const sub = obtenerListaSubclasesEditable(clase).find(s=> (s.id || s.nombre) === parent.subclaseId);
+      const clase = buscarClase(classId);
+      const sub = obtenerListaSubclasesEditable(clase).find(s=> (s.id || s.nombre) === subclaseId);
       if(!sub) return null;
       sub.rasgos = sub.rasgos || [];
       return sub.rasgos;
     }
     if(parent?.kind === 'raza'){
-      const raza = (libro.razas || []).find(r=> (r.id || r.nombre) === parent.raceId);
+      const raza = buscarRaza(raceId);
       if(!raza) return null;
       raza.rasgos = raza.rasgos || [];
       return raza.rasgos;
     }
     if(parent?.kind === 'subraza'){
-      const raza = (libro.razas || []).find(r=> (r.id || r.nombre) === parent.raceId);
-      const sub = (raza?.subrazas || []).find(s=> (s.id || s.nombre) === parent.subraceId);
+      const raza = buscarRaza(raceId);
+      const sub = (raza?.subrazas || []).find(s=> (s.id || s.nombre) === subraceId);
       if(!sub) return null;
       sub.rasgos = sub.rasgos || [];
       return sub.rasgos;

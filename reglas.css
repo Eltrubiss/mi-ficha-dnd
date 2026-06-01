@@ -394,3 +394,51 @@
 .reglas-editor-actions button.secundario {
   background: #8b7355;
 }
+/* Confirmación de eliminación en el libro de reglas */
+.reglas-confirm-overlay {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  pointer-events: auto;
+  z-index: 2147483647; /* Ensure overlay sits above any other UI */
+}
+.reglas-confirm-box {
+  background: #fffaf2;
+  border: 1px solid #dccbb0;
+  border-radius: 16px;
+  box-shadow: 0 18px 38px rgba(0,0,0,0.28);
+  color: #3d2b20;
+  max-width: 420px;
+  padding: 20px;
+  text-align: left;
+  width: min(420px, 100%);
+}
+.reglas-confirm-box h3 {
+  color: #5a4035;
+  font-family: Georgia, serif;
+  margin: 0 0 8px;
+}
+.reglas-confirm-box p {
+  line-height: 1.45;
+  margin: 0 0 16px;
+}
+.reglas-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.reglas-confirm-actions button {
+  border: none;
+  border-radius: 999px;
+  color: white;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 9px 14px;
+}
+.reglas-confirm-cancelar { background: #8b7355; }
+.reglas-confirm-confirmar { background: #b33a2f; }
