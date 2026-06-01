@@ -391,7 +391,45 @@ let libroDeReglasBasicas = {
         {
           nombre: "Arquetipo Marcial",
           nivelClase: 3,
+          descripcionResum: "A partir de nivel 3, puedes escojer un Arquetipo de Guerrero",
+          descripcion:`
+            A 3er nivel, elijes un arquetipo que encaje con tu forma de enfocar tus estilos y técnicas de combate. Tu arquetipo de otorga rasgos a 3er nivel, y de nuevo al 7, 10, 15 y 18 nivel.
+          `,
+          selecciones: [
+            {
+              id: "arquetipo_guerrero",
+              nombre: "Arquetipo Marcial",
+              tipo: "subclase",
+              cantidadSeleccionable: 1,
+              descripcion: "Escoge una de las siguientes Subclases:",
+              opciones: [
+                { id: "maestro_combate", nombre: "Maestro de Combate" },
+                { id: "campeon", nombre: "Campeón" },
+              ]
+            }
+          ]
+        },
+      ],
+      subclase: [
+        {
+          id: "campeon",
+          nombre: "Campeón",
+          descripcionResum: "+2 a las tiradas de ataque con armas a distancia.",
+          descripcion: `
+            Obtienes un bonificador +2 a las tiradas de ataque que hagas
+            con armas a distancia.
+          `,
+          rasgos: [
+            {
+            nombre: "popipo"
+            }
+          ]
+        },
+        {
+          id: "maestro_combate",
+          nombre: "Maestro de combate"
         }
+
       ]
     },
     {
@@ -421,26 +459,79 @@ let libroDeReglasBasicas = {
       ]
     }
   ],
+  armas: [
+    {
+      id: "espadaLarga",
+      nombre: "Espada larga",
+      descripcion: "Una hoja marcial equilibrada que puede blandirse con una o dos manos.",
+      precio: "15 po",
+      categoria: "arma",
+      subtipo: "Marcial cuerpo a cuerpo",
+      efectos: [
+        "Daño: 1d8 cortante",
+        "Versátil: 1d10 cortante"
+      ],
+      etiquetas: ["Versátil", "Marcial"],
+      sintonizable: false,
+      sintonizado: false
+    },
+    {
+      id: "arcoLargo",
+      nombre: "Arco largo",
+      descripcion: "Arco de gran alcance usado habitualmente por exploradores y soldados entrenados.",
+      precio: "50 po",
+      categoria: "arma",
+      subtipo: "Marcial a distancia",
+      efectos: [
+        "Daño: 1d8 perforante",
+        "Alcance: 150/600 pies"
+      ],
+      etiquetas: ["A dos manos", "Munición", "Pesada"],
+      sintonizable: false,
+      sintonizado: false
+    }
+  ],
   armaduras: [
     {
       id: "cuero",
       nombre: "Armadura de Cuero",
+      descripcion: "Armadura ligera de cuero endurecido que ofrece protección básica sin limitar demasiado el movimiento.",
+      precio: "10 po",
+      categoria: "armadura",
       tipo: "ligera",
-      caBase: 11
+      subtipo: "Ligera",
+      efectos: ["CA base: 11 + modificador de Destreza"],
+      etiquetas: ["Ligera"],
+      sintonizable: false,
+      sintonizado: false
     },
     {
       id: "mediaArmadura",
       nombre: "Armadura Media",
+      descripcion: "Protección intermedia que combina placas y piezas flexibles para resistir golpes fuertes.",
+      precio: "50 po",
+      categoria: "armadura",
       tipo: "media",
-      caBase: 15
-    }
-  ],
-  equipo: [
+      subtipo: "Media",
+      caBase: 15,
+      efectos: ["CA base: 15 + modificador de Destreza (máximo +2)"],
+      etiquetas: ["Media", "DES máx. +2"],
+      sintonizable: false,
+      sintonizado: false
+    },
     {
       id: "escudonormal",
       nombre: "Escudo",
+      descripcion: "Una defensa de mano que se embraza para desviar ataques y mejorar la Clase de Armadura.",
+      precio: "10 po",
+      categoria: "equipo",
       tipo: "escudo",
-      bonifCA: 2
+      subtipo: "Escudo",
+      bonifCA: 2,
+      efectos: ["+2 a la CA mientras lo portas"],
+      etiquetas: ["Defensivo", "Mano ocupada"],
+      sintonizable: false,
+      sintonizado: false
     }
   ],
   dotes: [
