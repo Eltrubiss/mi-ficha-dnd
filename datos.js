@@ -391,7 +391,45 @@ let libroDeReglasBasicas = {
         {
           nombre: "Arquetipo Marcial",
           nivelClase: 3,
+          descripcionResum: "A partir de nivel 3, puedes escojer un Arquetipo de Guerrero",
+          descripcion:`
+            A 3er nivel, elijes un arquetipo que encaje con tu forma de enfocar tus estilos y técnicas de combate. Tu arquetipo de otorga rasgos a 3er nivel, y de nuevo al 7, 10, 15 y 18 nivel.
+          `,
+          selecciones: [
+            {
+              id: "arquetipo_guerrero",
+              nombre: "Arquetipo Marcial",
+              tipo: "subclase",
+              cantidadSeleccionable: 1,
+              descripcion: "Escoge una de las siguientes Subclases:",
+              opciones: [
+                { id: "maestro_combate", nombre: "Maestro de Combate" },
+                { id: "campeon", nombre: "Campeón" },
+              ]
+            }
+          ]
+        },
+      ],
+      subclase: [
+        {
+          id: "campeon",
+          nombre: "Campeón",
+          descripcionResum: "+2 a las tiradas de ataque con armas a distancia.",
+          descripcion: `
+            Obtienes un bonificador +2 a las tiradas de ataque que hagas
+            con armas a distancia.
+          `,
+          rasgos: [
+            {
+            nombre: "popipo"
+            }
+          ]
+        },
+        {
+          id: "maestro_combate",
+          nombre: "Maestro de combate"
         }
+
       ]
     },
     {
