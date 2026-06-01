@@ -552,6 +552,8 @@ let libroDeReglasBasicas = {
       sintonizado: false
     }
   ],
+  equipo: [
+  ],
   dotes: [
     {    }
   ],
