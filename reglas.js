@@ -128,6 +128,29 @@
     return wrap;
   }
 
+    function esModoEdicionEditor(screen){
+    return screen.mode === 'edit' || Boolean(screen.target);
+  }
+
+  function confirmarAccionReglas({ titulo='Confirmar acción', mensaje, confirmar='Confirmar', cancelar='Cancelar', onConfirm }){
+    const overlay = document.createElement('div');
+    overlay.className = 'reglas-confirm-overlay';
+    overlay.innerHTML = `
+      <div class="reglas-confirm-box" role="alertdialog" aria-modal="true">
+        <h3>${escapeHtml(titulo)}</h3>
+        <p>${escapeHtml(mensaje)}</p>
+        <div class="reglas-confirm-actions">
+          <button type="button" class="reglas-confirm-cancelar">${escapeHtml(cancelar)}</button>
+          <button type="button" class="reglas-confirm-confirmar">${escapeHtml(confirmar)}</button>
+        </div>
+      </div>`;
+    const cerrarConfirmacion = ()=> overlay.remove();
+    overlay.addEventListener('click', event=>{ if(event.target === overlay) cerrarConfirmacion(); });
+    overlay.querySelector('.reglas-confirm-cancelar').addEventListener('click', cerrarConfirmacion);
+    overlay.querySelector('.reglas-confirm-confirmar').addEventListener('click', ()=>{ cerrarConfirmacion(); onConfirm(); });
+    document.body.appendChild(overlay);
+  }
+  
   function renderCurrentScreen(){
     const screen = currentScreen();
     if(screen.type==='home') renderLibroMenu();
@@ -606,7 +629,11 @@
     const desc = document.createElement('div'); desc.className='detalle-rasgo-descripcion'; desc.innerHTML = descripcionHtml(rasgo);
     listaContenedor.appendChild(titulo);
     listaContenedor.appendChild(desc);
-    const accionesEdicion = renderAccionesEdicion([{ label:'Editar rasgo', onClick: ()=> abrirEditorRegla({ entity:'rasgo', mode:'edit', title:'Editar rasgo', target:{ kind:'rasgos', rasgos, index:rasgoIndex } }) }]);
+    const targetRasgo = { kind:'rasgos', rasgos, index:rasgoIndex };
+    const accionesEdicion = renderAccionesEdicion([
+      { label:'Editar rasgo', onClick: ()=> abrirEditorRegla({ entity:'rasgo', mode:'edit', title:'Editar rasgo', target:targetRasgo }) },
+      { label:'Eliminar rasgo', onClick: ()=> confirmarEliminarRasgo(targetRasgo, rasgo) }
+    ]);
     if(accionesEdicion) listaContenedor.appendChild(accionesEdicion);
     const seleccionesDeRasgos = getSeleccionesDeRasgos([rasgo]);
     if(seleccionesDeRasgos.length){
@@ -628,7 +655,11 @@
     listaContenedor.appendChild(title);
     listaContenedor.appendChild(desc);
     if(cat === 'rasgos'){
-      const accionesEdicion = renderAccionesEdicion([{ label:'Editar rasgo', onClick: ()=> abrirEditorRegla({ entity:'rasgo', mode:'edit', title:'Editar rasgo', target:{ kind:'categoria', cat:'rasgos', index:item.__index } }) }]);
+      const targetRasgo = { kind:'categoria', cat:'rasgos', index:item.__index };
+      const accionesEdicion = renderAccionesEdicion([
+        { label:'Editar rasgo', onClick: ()=> abrirEditorRegla({ entity:'rasgo', mode:'edit', title:'Editar rasgo', target:targetRasgo }) },
+        { label:'Eliminar rasgo', onClick: ()=> confirmarEliminarRasgo(targetRasgo, item) }
+      ]);
       if(accionesEdicion) listaContenedor.appendChild(accionesEdicion);
     }
     if(cat !== 'equipo'){
@@ -698,7 +729,7 @@
     listaContenedor.innerHTML = '';
     listaContenedor.appendChild(renderSubmenuHeader(screen.title || 'Editar libro'));
 
-    const item = screen.mode === 'edit' ? obtenerItemEditor(screen) : null;
+    const item = esModoEdicionEditor(screen) ? obtenerItemEditor(screen) : null;
     const form = document.createElement('form');
     form.className = 'reglas-editor-form';
     const intro = document.createElement('p');
@@ -733,7 +764,7 @@
 
     const actions = document.createElement('div');
     actions.className = 'reglas-editor-actions';
-    const guardar = document.createElement('button'); guardar.type='submit'; guardar.textContent= screen.mode === 'edit' ? 'Guardar cambios' : 'Guardar'
+    const guardar = document.createElement('button'); guardar.type='submit'; guardar.textContent= esModoEdicionEditor(screen) ? 'Guardar cambios' : 'Guardar'
     const cancelar = document.createElement('button'); cancelar.type='button'; cancelar.textContent='Cancelar'; cancelar.className='secundario'; cancelar.addEventListener('click', popScreen);
     actions.appendChild(guardar); actions.appendChild(cancelar); form.appendChild(actions);
 
@@ -755,7 +786,7 @@
   }
 
   function obtenerAyudaEditor(screen){
-    if(screen.mode === 'edit'){
+    if(esModoEdicionEditor(screen)){
       const ayudasEdicion = {
         manual: 'Edita el nombre y la descripción principal del manual.',
         clase: 'Edita la información descriptiva de la clase sin borrar sus rasgos ni subclases.',
@@ -789,7 +820,7 @@
     if(screen.entity === 'clase'){
       const dado = Number(form.elements.dadoDeGolpe.value);
       if(dado) data.dadoDeGolpe = dado;
-      if(screen.mode !== 'edit'){
+      if(esModoEdicionEditor(screen)){
         data.rasgos = [];
         data.subclase = [];
       }
@@ -797,12 +828,12 @@
     if(screen.entity === 'raza'){
       const velocidad = Number(form.elements.velocidad.value);
       if(velocidad) data.velocidad = velocidad;
-      if(screen.mode !== 'edit'){
+      if(esModoEdicionEditor(screen)){
         data.rasgos = [];
         data.subrazas = [];
       }
     }
-    if((screen.entity === 'subclase' || screen.entity === 'subraza') && screen.mode !== 'edit') data.rasgos = [];
+    if((screen.entity === 'subclase' || screen.entity === 'subraza') && !esModoEdicionEditor(screen)) data.rasgos = [];
     if(screen.entity === 'rasgo'){
       const nivel = Number(form.elements.nivelClase.value);
       if(nivel) data.nivelClase = nivel;
@@ -825,7 +856,7 @@
     if(!data.nombre) return alert('Introduce un nombre.');
 
     let guardado = false;
-    if(screen.mode === 'edit') guardado = actualizarEntidad(libro, screen, data);
+    if(esModoEdicionEditor(screen)) guardado = actualizarEntidad(libro, screen, data);
     else if(screen.entity === 'clase') guardado = guardarClase(libro, data);
     if(screen.entity === 'clase') guardado = guardarClase(libro, data);
     else if(screen.entity === 'raza') guardado = guardarRaza(libro, data);
@@ -889,6 +920,32 @@
     return false;
   }
 
+    function eliminarRasgoDesdeTarget(target){
+    const libro = currentLibro();
+    if(!libro) return alert('Selecciona un libro.');
+    let destino = null;
+    let indice = Number(target?.index);
+    if(Array.isArray(target?.rasgos)) destino = target.rasgos;
+    else if(target?.kind === 'categoria') destino = libro.categorias?.[target.cat];
+    if(!destino || !Number.isInteger(indice) || indice < 0 || indice >= destino.length){
+      alert('No se pudo encontrar el rasgo para eliminar.');
+      return;
+    }
+    destino.splice(indice, 1);
+    save();
+    if(screenStack.length > 1) screenStack.pop();
+    renderCurrentScreen();
+  }
+
+  function confirmarEliminarRasgo(target, rasgo){
+    confirmarAccionReglas({
+      titulo: 'Eliminar rasgo',
+      mensaje: `¿Seguro que quieres eliminar el rasgo "${rasgo?.nombre || 'Sin nombre'}"? Esta acción no se puede deshacer.`,
+      confirmar: 'Eliminar rasgo',
+      onConfirm: ()=> eliminarRasgoDesdeTarget(target)
+    });
+  }
+  
   function actualizarPantallaAnterior(campo, valor){
     const anterior = screenStack[screenStack.length - 2];
     if(anterior && Object.prototype.hasOwnProperty.call(anterior, campo)) anterior[campo] = valor;
