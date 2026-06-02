@@ -721,6 +721,7 @@ let subclaseElegida = clasesActivas[0]?.subclase || null;
 const estado = {
   usaArmadura: Boolean(armaduraElegida),
   sinArmadura: !armaduraElegida,
+  tipoArmadura: armaduraElegida?.tipo || "",
   usaEscudo: Boolean(personajeConBonos.escudo),
   sinEscudo: !personajeConBonos.escudo
 };
@@ -793,7 +794,11 @@ function obtenerRasgosConOrigenParaDetalles() {
 }
 
 function obtenerValorEfecto(efecto) {
-  return efecto?.valor || efecto?.valorDelBono || 0;
+  const valor = efecto?.valor ?? efecto?.valorDelBono ?? 0;
+  if (valor === "mitad_competencia") return Math.floor(calcularBonificadorCompetencia() / 2);
+  if (valor === "competencia") return calcularBonificadorCompetencia();
+  if (valor === "doble_competencia") return calcularBonificadorCompetencia() * 2;
+  return Number(valor) || 0;
 }
 
 function obtenerDetallesEfectos(tipoDeEfecto, propiedadFiltro = null, valorFiltro = null) {
@@ -952,13 +957,24 @@ document.getElementById("info-personaje").innerText = personajeActual.raza + ", 
 actualizarDetalleCompetencia();
 document.getElementById("BC").innerText = formatoValor(bonifCompetencia);
 ////////////////////// || RASGOS || ///////////////////////////////////
+function obtenerTipoArmaduraActiva(estado) {
+  const armaduraPersonalizada = obtenerArmaduraPersonalizadaEquipada();
+  if (armaduraPersonalizada) {
+    return String(armaduraPersonalizada.tipo || armaduraPersonalizada.subtipo || "").toLowerCase();
+  }
+  return String(estado?.tipoArmadura || armaduraElegida?.tipo || "").toLowerCase();
+}
+
 function seCumpleCondicion(condicion, estado) {
   if (!condicion) return true;
   const tieneArmaduraEquipada = Boolean(estado.usaArmadura || obtenerArmaduraPersonalizadaEquipada());
   const tieneEscudoEquipado = Boolean(estado.usaEscudo || obtenerEscudosPersonalizadosEquipados().length);
+  const tipoArmaduraActiva = obtenerTipoArmaduraActiva(estado);
+  const llevaArmaduraPesada = tieneArmaduraEquipada && tipoArmaduraActiva.includes("pesad");
   if (condicion.sinArmadura && tieneArmaduraEquipada) return false;
   if (condicion.sinEscudo && tieneEscudoEquipado) return false;
   if ((condicion.conArmadura || condicion.usaArmadura) && !tieneArmaduraEquipada) return false;
+  if (condicion.sinArmaduraPesada && llevaArmaduraPesada) return false;
   return true;
 }
 
@@ -1644,7 +1660,7 @@ function obtenerBonosDeHabilidad(nombreHabilidad, esCompetente) {
 
       items.push({
         origen: rasgo.nombre || rasgo.origen || "Rasgo",
-        valor: efecto.valor || efecto.valorDelBono || 0,
+        valor: obtenerValorEfecto(efecto),
         descripcion: rasgo.descripcionResum || `Bono de ${rasgo.origen || "rasgo"}`
       });
     });
@@ -1664,6 +1680,33 @@ function abrirPopupHabilidad(nombreHabilidad) {
   document.getElementById("popup-estadisticas").classList.remove("oculto");
 }
 
+function obtenerBonosDePruebaStat(stat, esCompetente) {
+  const contexto = { competencia: Boolean(esCompetente) };
+  const items = [];
+
+  obtenerFuentesConEfectos().forEach(rasgo => {
+    (rasgo.efectos || []).forEach(efecto => {
+      if (efecto.tipoDeEfecto !== "bono_prueba_stat") return;
+      const statsAfectadas = Array.isArray(efecto.statsAfectadas)
+        ? efecto.statsAfectadas
+        : [efecto.statAfectada || efecto.stat];
+      if (!statsAfectadas.includes(stat)) return;
+      if (!efectoCumpleCondicionesHabilidad(efecto, contexto)) return;
+
+      items.push({
+        origen: rasgo.nombre || rasgo.origen || "Rasgo",
+        valor: obtenerValorEfecto(efecto),
+        descripcion: efecto.descripcion || rasgo.descripcionResum || `Bono de ${rasgo.origen || "rasgo"}`
+      });
+    });
+  });
+
+  return {
+    total: items.reduce((total, item) => total + item.valor, 0),
+    items
+  };
+}
+
 function obtenerBonosDeSalvacion(stat) {
   const items = [];
 
@@ -1676,7 +1719,7 @@ function obtenerBonosDeSalvacion(stat) {
 
       items.push({
         origen: rasgo.nombre || rasgo.origen || "Rasgo",
-        valor: efecto.valor || efecto.valorDelBono || 0,
+        valor: obtenerValorEfecto(efecto),
         descripcion: rasgo.descripcionResum || `Bono de ${rasgo.origen || "rasgo"}`
       });
     });
@@ -1825,7 +1868,8 @@ function renderCompetencias() {
     const modBase = calcularModificadorNumero(stats[stat]);
     const bonoCompetencia = esCompetente ? BC : 0;
     const bonosHabilidad = obtenerBonosDeHabilidad(nombre, esCompetente);
-    const mod = modBase + bonoCompetencia + bonosHabilidad.total;
+    const bonosPruebaStat = obtenerBonosDePruebaStat(stat, esCompetente);
+    const mod = modBase + bonoCompetencia + bonosHabilidad.total + bonosPruebaStat.total;
     const signo = mod >= 0 ? "+" : "";
 
     detalleHabilidades[nombre] = {
@@ -1833,7 +1877,8 @@ function renderCompetencias() {
       items: [
         { origen: `Modificador de ${stat}`, valor: modBase, descripcion: `${stat} final: ${stats[stat]}` },
         ...(esCompetente ? [{ origen: "Competencia", valor: bonoCompetencia, descripcion: "Bonificador de competencia aplicado" }] : []),
-        ...bonosHabilidad.items
+        ...bonosHabilidad.items,
+        ...bonosPruebaStat.items
       ]
     };
 
