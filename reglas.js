@@ -7,6 +7,77 @@
     return { id: genId(), nombre: 'Reglas básicas', descripcion:'', razas: [], opcionesCompartidas: {}, categorias: { rasgos: [], dotes: [], equipo: [], estados: [] }, clases: {} };
   }
 
+    function obtenerTextoEfectosEquipo(item){
+    if(Array.isArray(item?.efectos)) return item.efectos.join('\n');
+    return String(item?.efectos || '');
+  }
+
+  function normalizarPrecioEquipo(precio){
+    if(precio && typeof precio === 'object'){
+      return { ...precio, texto: `${precio.cantidad ?? ''} ${precio.moneda || ''}`.trim() };
+    }
+    return { texto: String(precio || '—') };
+  }
+
+  function inferirGrupoEquipo(item, categoriaBase){
+    const texto = normalizarTexto(`${item?.grupo || ''} ${item?.tipo || ''} ${item?.subtipo || ''} ${item?.nombre || ''} ${(item?.etiquetas || []).join(' ')}`);
+    if(categoriaBase === 'arma'){
+      const clase = item?.arma?.clase || (texto.includes('marcial') ? 'marcial' : 'simple');
+      const uso = item?.arma?.uso || item?.arma?.alcanceUso || (texto.includes('distancia') || texto.includes('municion') || texto.includes('arco') ? 'distancia' : 'cuerpo');
+      return `armas_${clase === 'marcial' ? 'marciales' : 'simples'}_${uso === 'distancia' ? 'distancia' : 'cuerpo'}`;
+    }
+    if(categoriaBase === 'armadura'){
+      const clase = item?.armadura?.clase || item?.tipo || item?.subtipo || '';
+      const textoClase = normalizarTexto(clase);
+      if(textoClase.includes('escudo')) return 'escudos';
+      if(textoClase.includes('pesad')) return 'armaduras_pesadas';
+      if(textoClase.includes('media') || textoClase.includes('medio')) return 'armaduras_medias';
+      return 'armaduras_ligeras';
+    }
+    if(texto.includes('herramienta')) return 'herramientas';
+    if(texto.includes('foco')) return 'focos';
+    if(texto.includes('montura')) return 'monturas';
+    if(texto.includes('vehiculo') || texto.includes('vehículo')) return 'vehiculos';
+    if(texto.includes('pack') || texto.includes('paquete')) return 'packs';
+    return 'equipo_aventurero';
+  }
+
+  function obtenerCategoriaEquipo(item, tipoBase){
+    if(tipoBase === 'arma') return 'arma';
+    if(tipoBase === 'armadura') return 'armadura';
+    if(item?.categoria === 'arma' || item?.tipo === 'arma') return 'arma';
+    if(item?.categoria === 'armadura' || item?.tipo === 'armadura' || item?.tipo === 'escudo') return 'armadura';
+    return item?.categoria || 'equipo';
+  }
+
+  function normalizarEquipoParaLibro(item, tipoBase='equipo'){
+    const categoria = obtenerCategoriaEquipo(item, tipoBase);
+    const grupo = item.grupo || inferirGrupoEquipo(item, categoria);
+    const efectosTexto = obtenerTextoEfectosEquipo(item);
+    return {
+      ...item,
+      id: item.id || slugifyId(item.nombre || grupo, 'equipo'),
+      nombre: item.nombre || 'Objeto sin nombre',
+      descripcion: item.descripcion || item.descripcionResum || efectosTexto || 'Sin descripción.',
+      categoria,
+      tipo: categoria === 'arma' || categoria === 'armadura' ? categoria : 'equipo',
+      grupo,
+      precio: item.precio,
+      precioDato: normalizarPrecioEquipo(item.precio),
+      peso: item.peso ?? item.pesoLb ?? '',
+      efectosTexto,
+      etiquetas: Array.isArray(item.etiquetas) ? item.etiquetas : []
+    };
+  }
+
+  function obtenerCatalogoEquipoDesdeDatos(d){
+    return [
+      ...(d.armas || []).map(item => normalizarEquipoParaLibro(item, 'arma')),
+      ...(d.armaduras || []).map(item => normalizarEquipoParaLibro(item, 'armadura')),
+      ...(d.equipo || []).map(item => normalizarEquipoParaLibro(item, 'equipo'))
+    ];
+  }
+
   function convertirDesdeDatos(d){
     const libro = { id: 'basicas', nombre: d.nombre || 'Reglas básicas', descripcion: d.descripcion || d.resumen || 'Consulta las reglas disponibles para construir personajes, revisar opciones de juego y encontrar equipo de forma rápida.', razas: [], opcionesCompartidas: d.opcionesCompartidas || {}, categorias: { rasgos: [], dotes: [], equipo: [], estados: [] }, clases: {} };
     if(Array.isArray(d.razas)){
@@ -19,10 +90,10 @@
     }
     if(Array.isArray(d.clases)){
       d.clases.forEach(c=>{
-        libro.clases[c.nombre || c.id || ('clase_' + Math.random().toString(36).slice(2,8))] = c;
-      });
+        const key = c.id || c.nombre || ('clase_' + Math.random().toString(36).slice(2,8));
+        libro.clases[key] = c;      });
     }
-    if(Array.isArray(d.equipo)) libro.categorias.equipo = d.equipo.map(it=>({ ...it, nombre: it.nombre, descripcion: it.descripcion || it.efectos || '' }));
+    libro.categorias.equipo = obtenerCatalogoEquipoDesdeDatos(d);
     if(Array.isArray(d.dotes)) libro.categorias.dotes = d.dotes.map(it=>({ ...it, nombre: it.nombre, descripcion: it.descripcion||'' }));
     if(Array.isArray(d.estados)) libro.categorias.estados = d.estados.map(it=>({ ...it, nombre: it.nombre, descripcion: it.descripcion||'' }));
     return libro;
@@ -35,8 +106,33 @@
     window.libroReglas = _stored || [ crearLibroVacio() ];
   }
 
+
+  function sincronizarLibroBasicoConDatos(){
+    if(typeof libroDeReglasBasicas === 'undefined') return false;
+    const libroActualizado = convertirDesdeDatos(libroDeReglasBasicas);
+    const indiceBasicas = window.libroReglas.findIndex(libro=> libro.id === 'basicas');
+    if(indiceBasicas === -1){
+      window.libroReglas.unshift(libroActualizado);
+      return true;
+    }
+
+    const libroBasicas = window.libroReglas[indiceBasicas];
+    const libroSincronizado = {
+      ...libroBasicas,
+      ...libroActualizado,
+      id: libroBasicas.id,
+      nombre: libroBasicas.nombre || libroActualizado.nombre
+    };
+    const necesitaActualizar = JSON.stringify(libroBasicas) !== JSON.stringify(libroSincronizado);
+    if(!necesitaActualizar) return false;
+    window.libroReglas[indiceBasicas] = libroSincronizado;
+    return true;
+  }
+
+  const libroBasicoSincronizado = sincronizarLibroBasicoConDatos();
+
   function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(window.libroReglas)); }
-  function el(id){ return document.getElementById(id); }
+  if(libroBasicoSincronizado) save();  function el(id){ return document.getElementById(id); }
   function escapeHtml(s){ return String(s||'').replace(/[&<>\"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function textoResumen(item){ return item?.descripcionResum || item?.resumen || item?.descripcion || item?.efectos || 'Sin descripción.'; }
   function descripcionHtml(item){ return item?.descripcion || item?.descripcionResum || item?.resumen || item?.efectos || '<em>Sin descripción.</em>'; }
@@ -163,6 +259,7 @@
     else if(screen.type==='subrazaDetail') renderSubrazaDetail(screen.raceId, screen.subraceId, screen.tab||'rasgos');
     else if(screen.type==='rasgoDetail') renderRasgoDetail(screen.parentTitle, screen.rasgos || [], screen.rasgoIndex);
     else if(screen.type==='itemDetail') renderItemDetail(screen.cat, screen.itemId);
+    else if(screen.type==='equipoDetail') renderEquipoDetail(screen.itemId);
     else if(screen.type==='editor') renderEditor(screen);
   }
 
@@ -218,6 +315,9 @@
 
   window.openLibroReglas = function(id){ if(id) libroSeleccionadoId = id; abrirModal(); };
 
+  window.__cambiarFiltroEquipo = cambiarFiltroEquipo;
+  window.__limpiarFiltrosEquipo = limpiarFiltrosEquipo;
+
   function renderSubmenuHeader(title, subtitle){
     const header = document.createElement('div'); header.className = 'submenu-header';
     const back = document.createElement('button'); back.className = 'submenu-back'; back.textContent = '← Volver'; back.addEventListener('click', popScreen);
@@ -239,18 +339,9 @@
     const descText = libro.descripcion || libro.resumen || libro.description || 'Explora razas, clases, dotes y equipo desde un menú ordenado. Cada sección incluye búsqueda, descripciones rápidas y vistas detalladas con pestañas.';
     const p = document.createElement('p'); p.className='libro-descripcion'; p.textContent = descText; cont.appendChild(p);
     const toolbar = document.createElement('div'); toolbar.className = 'reglas-edit-mode-toolbar';
-    const toggleEdit = document.createElement('button'); toggleEdit.type = 'button'; toggleEdit.className = 'reglas-edit-toggle' + (editMode ? ' active' : '');
-    toggleEdit.textContent = editMode ? '✓ Modo edición activo' : '✎ Activar modo edición';
-    toggleEdit.addEventListener('click', ()=>{ editMode = !editMode; actualizarControlesEdicion(); renderCurrentScreen(); });
-    const hint = document.createElement('span'); hint.textContent = editMode ? 'Puedes crear clases, razas, subclases, subrazas y rasgos desde cada pantalla.' : 'Actívalo para añadir contenido al libro desde el contexto actual.';
-    toolbar.appendChild(toggleEdit); toolbar.appendChild(hint);
-    if(editMode){
-      toolbar.appendChild(crearBotonAccionEdicion('Editar manual', ()=> abrirEditorRegla({ entity:'manual', mode:'edit', title:'Editar manual', target:{ kind:'manual' } })));
-      toolbar.appendChild(crearBotonAccionEdicion('Eliminar manual', ()=> confirmarAccionReglas({ titulo: 'Eliminar manual', mensaje: `¿Seguro que quieres eliminar el manual "${libro.nombre || libro.id}"? Esta acción no se puede deshacer.`, confirmar: 'Eliminar manual', onConfirm: ()=>{ if(!window.libroReglas) return; const idx = window.libroReglas.findIndex(l=> l.id === libro.id); if(idx > -1) window.libroReglas.splice(idx,1); save(); cerrarModal(); renderLibros(); } })));
-    }
-    cont.appendChild(toolbar);    const hr = document.createElement('hr'); cont.appendChild(hr);
-    const label = document.createElement('h4'); label.className='libro-menu-titulo'; label.textContent='Selección de submenús'; cont.appendChild(label);
-    const menu = document.createElement('div'); menu.className='libro-menu';
+    editMode = false;
+    actualizarControlesEdicion();
+    const hr = document.createElement('hr'); cont.appendChild(hr);    const menu = document.createElement('div'); menu.className='libro-menu';
     const opciones = [
       ['razas','Razas','Linajes, rasgos raciales y subrazas disponibles.'],
       ['clases','Clases','Progresión, rasgos de clase y subclases.'],
@@ -319,7 +410,7 @@
     const items = Object.keys(clases).map(key=>({ ...clases[key], nombre: clases[key].nombre || key, __key: key }));
     renderEntityList({
       title: 'Clases',
-      searchLabel: 'Buscador de clases',
+      searchLabel: '',
       items,
       query,
       onQuery: value=>{ const current = currentScreen(); current.query = value; renderClassList(value); },
@@ -330,11 +421,11 @@
     });
   }
 
-  function renderRaceList(query=''){
+ function renderRaceList(query=''){
     const libro = currentLibro(); if(!libro){ listaContenedor.innerHTML = '<p>No hay libros.</p>'; return; }
     renderEntityList({
       title: 'Razas',
-      searchLabel: 'Buscador de razas',
+      searchLabel: '',
       items: libro.razas || [],
       query,
       onQuery: value=>{ const current = currentScreen(); current.query = value; renderRaceList(value); },
@@ -345,15 +436,372 @@
     });
   }
 
+  const EQUIPO_CATEGORIAS = [
+    { id:'arma', label:'Armas' },
+    { id:'armadura', label:'Armaduras' },
+    { id:'equipo', label:'Equipo' },
+    { id:'herramienta', label:'Herramientas' },
+    { id:'montura', label:'Monturas' },
+    { id:'vehiculo', label:'Vehículos' },
+    { id:'servicio', label:'Servicios' },
+    { id:'pack', label:'Packs' }
+  ];
+
+  const EQUIPO_GRUPOS = [
+    { id:'todo', nombre:'Todo', descripcion:'Catálogo completo', categoria:null },
+    { id:'armas_simples_cuerpo', nombre:'Armas simples cuerpo a cuerpo', descripcion:'Armas sencillas de combate cercano', categoria:'arma' },
+    { id:'armas_simples_distancia', nombre:'Armas simples a distancia', descripcion:'Armas sencillas de ataque remoto', categoria:'arma' },
+    { id:'armas_marciales_cuerpo', nombre:'Armas marciales cuerpo a cuerpo', descripcion:'Armas avanzadas de combate cercano', categoria:'arma' },
+    { id:'armas_marciales_distancia', nombre:'Armas marciales a distancia', descripcion:'Armas avanzadas de ataque remoto', categoria:'arma' },
+    { id:'armaduras_ligeras', nombre:'Armaduras ligeras', descripcion:'Protección flexible', categoria:'armadura' },
+    { id:'armaduras_medias', nombre:'Armaduras medias', descripcion:'Protección intermedia', categoria:'armadura' },
+    { id:'armaduras_pesadas', nombre:'Armaduras pesadas', descripcion:'Protección máxima', categoria:'armadura' },
+    { id:'escudos', nombre:'Escudos', descripcion:'Defensas de mano', categoria:'armadura' },
+    { id:'equipo_aventurero', nombre:'Equipo de aventurero', descripcion:'Objetos de exploración y viaje', categoria:'equipo' },
+    { id:'herramientas', nombre:'Herramientas', descripcion:'Herramientas e instrumentos', categoria:'herramienta' },
+    { id:'focos', nombre:'Focos', descripcion:'Focos de lanzamiento', categoria:'equipo' },
+    { id:'packs', nombre:'Packs', descripcion:'Conjuntos de equipo', categoria:'pack' },
+    { id:'monturas', nombre:'Monturas', descripcion:'Animales y sillas', categoria:'montura' },
+    { id:'vehiculos', nombre:'Vehículos', descripcion:'Vehículos terrestres o acuáticos', categoria:'vehiculo' },
+    { id:'servicios', nombre:'Servicios', descripcion:'Costes de servicios', categoria:'servicio' }
+  ];
+
+  function obtenerGrupoEquipo(grupoId){
+    return EQUIPO_GRUPOS.find(grupo => grupo.id === grupoId) || EQUIPO_GRUPOS[0];
+  }
+
+  function obtenerEquipoCategoria(item){
+    const categoria = item?.categoria || item?.tipo || 'equipo';
+    if(categoria === 'escudo') return 'armadura';
+    if(['arma', 'armadura', 'herramienta', 'montura', 'vehiculo', 'servicio', 'pack'].includes(categoria)) return categoria;
+    const grupo = obtenerGrupoEquipo(item?.grupo);
+    return grupo.categoria || 'equipo';
+  }
+
+  function obtenerEquipoLibro(){
+    const libro = currentLibro();
+    return (libro?.categorias?.equipo || []).map((item, index)=>{
+      const normalizado = normalizarEquipoParaLibro(item);
+      return { ...normalizado, categoria: obtenerEquipoCategoria(normalizado), __index:index };
+    });
+  }
+
+  function obtenerDetalleMecanicoEquipo(item){
+    if(item.categoria === 'arma'){
+      const arma = item.arma || {};
+      const dano = arma.dano ? `${arma.dano.dado || ''} ${arma.dano.tipo || ''}`.trim() : '';
+      const alcance = arma.alcance ? `${arma.alcance}${arma.alcanceLargo ? `/${arma.alcanceLargo}` : ''} pies` : '';
+      return [
+        arma.clase ? `Clase: ${arma.clase}` : '',
+        (arma.uso || arma.alcanceUso) ? `Uso: ${arma.uso || arma.alcanceUso}` : '',
+        dano ? `Daño: ${dano}` : '',
+        arma.versatil?.dado ? `Versátil: ${arma.versatil.dado} ${arma.versatil.tipo || ''}`.trim() : '',
+        alcance ? `Alcance: ${alcance}` : ''
+      ].filter(Boolean).join(' · ') || item.efectosTexto || 'Arma';
+    }
+    if(item.categoria === 'armadura'){
+      const armadura = item.armadura || {};
+      const ca = armadura.clase === 'escudo'
+        ? `+${armadura.bonificadorCA || item.bonifCA || 2} CA`
+        : armadura.caBase ? `CA ${armadura.caBase}${armadura.destreza === 'max2' ? ' + DES máx. +2' : armadura.destreza === 'ninguna' ? '' : ' + DES'}` : '';
+      return [
+        armadura.clase ? `Clase: ${armadura.clase}` : '',
+        ca,
+        armadura.fuerzaMinima ? `FUE ${armadura.fuerzaMinima}` : '',
+        armadura.desventajaSigilo ? 'Desventaja en Sigilo' : ''
+      ].filter(Boolean).join(' · ') || item.efectosTexto || 'Armadura';
+    }
+    return item.efectosTexto || item.descripcion || 'Equipo';
+  }
+
+  function obtenerValorFiltroEquipo(screen, nombre, fallback=''){
+    return screen.filtros?.[nombre] || fallback;
+  }
+
+  function cambiarFiltroEquipo(nombre, valor){
+    const current = currentScreen();
+    current.filtros = { ...(current.filtros || {}), [nombre]: valor };
+    renderEquipoExplorer();
+  }
+
+  function limpiarFiltrosEquipo(){
+    const current = currentScreen();
+    current.filtros = {};
+    renderEquipoExplorer();
+  }
+
+  function renderSearchBoxEquipo(query, onInput){
+    const box = document.createElement('div');
+    box.className='equipo-explorer-toolbar';
+    const search = renderSearchBox('Buscador de equipo', query, onInput);
+    const filterWrap = document.createElement('div');
+    filterWrap.className = 'equipo-filtro-wrap';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'equipo-filtro-btn';
+    btn.textContent = 'Filtrar';
+    btn.addEventListener('click', ()=>{ const current = currentScreen(); current.filtrosAbiertos = !current.filtrosAbiertos; renderEquipoExplorer(); });
+    filterWrap.appendChild(btn);
+    box.appendChild(search);
+    box.appendChild(filterWrap);
+    return { box, filterWrap };
+  }
+
+  function renderFiltroSelect(label, nombre, valor, opciones){
+    return `
+      <label>${escapeHtml(label)}
+        <select onchange="window.__cambiarFiltroEquipo('${escapeHtml(nombre)}', this.value)">
+          ${opciones.map(op=>`<option value="${escapeHtml(op.value)}" ${valor === op.value ? 'selected' : ''}>${escapeHtml(op.label)}</option>`).join('')}
+        </select>
+      </label>`;
+  }
+
+  function renderPanelFiltrosEquipo(categoriaActiva, screen){
+    const filtros = screen.filtros || {};
+    const panel = document.createElement('div');
+    panel.className = 'equipo-filtros-panel';
+    const grupoOpciones = EQUIPO_GRUPOS
+      .filter(grupo => grupo.id === 'todo' || grupo.categoria === categoriaActiva)
+      .map(grupo => ({ value: grupo.id === 'todo' ? '' : grupo.id, label: grupo.nombre }));
+    let contenido = renderFiltroSelect('Grupo', 'grupo', filtros.grupo || '', [{ value:'', label:'Todos' }, ...grupoOpciones.filter(op=>op.value)]);
+
+    if(categoriaActiva === 'arma'){
+      contenido += renderFiltroSelect('Clase de arma', 'claseArma', filtros.claseArma || '', [
+        { value:'', label:'Todas' }, { value:'simple', label:'Simple' }, { value:'marcial', label:'Marcial' }
+      ]);
+      contenido += renderFiltroSelect('Uso', 'usoArma', filtros.usoArma || '', [
+        { value:'', label:'Todos' }, { value:'cuerpo', label:'Cuerpo a cuerpo' }, { value:'distancia', label:'A distancia' }
+      ]);
+      contenido += renderFiltroSelect('Propiedad', 'propiedad', filtros.propiedad || '', [
+        { value:'', label:'Todas' }, { value:'versatil', label:'Versátil' }, { value:'municion', label:'Munición' }, { value:'pesada', label:'Pesada' }, { value:'dos_manos', label:'A dos manos' }
+      ]);
+    } else if(categoriaActiva === 'armadura'){
+      contenido += renderFiltroSelect('Clase de armadura', 'claseArmadura', filtros.claseArmadura || '', [
+        { value:'', label:'Todas' }, { value:'ligera', label:'Ligera' }, { value:'media', label:'Media' }, { value:'pesada', label:'Pesada' }, { value:'escudo', label:'Escudo' }
+      ]);
+      contenido += renderFiltroSelect('Destreza en CA', 'destrezaCA', filtros.destrezaCA || '', [
+        { value:'', label:'Cualquiera' }, { value:'completa', label:'DES completa' }, { value:'max2', label:'DES máx. +2' }, { value:'ninguna', label:'Sin DES' }
+      ]);
+      contenido += renderFiltroSelect('Sigilo', 'sigilo', filtros.sigilo || '', [
+        { value:'', label:'Cualquiera' }, { value:'sin_desventaja', label:'Sin desventaja' }, { value:'con_desventaja', label:'Con desventaja' }
+      ]);
+    } else {
+      contenido += renderFiltroSelect('Etiqueta', 'etiqueta', filtros.etiqueta || '', [
+        { value:'', label:'Todas' }, { value:'foco', label:'Foco' }, { value:'herramienta', label:'Herramienta' }, { value:'pack', label:'Pack' }, { value:'consumible', label:'Consumible' }
+      ]);
+    }
+
+    panel.innerHTML = `
+      <div class="equipo-filtros-cabecera">
+        <strong>Filtros de ${escapeHtml(EQUIPO_CATEGORIAS.find(cat=>cat.id===categoriaActiva)?.label || 'Equipo')}</strong>
+        <button type="button" onclick="window.__limpiarFiltrosEquipo()">Limpiar</button>
+      </div>
+      <div class="equipo-filtros-grid">${contenido}</div>`;
+    return panel;
+  }
+
+  function itemCumpleFiltrosEquipo(item, categoriaActiva, filtros){
+    if(filtros.grupo && item.grupo !== filtros.grupo) return false;
+    if(categoriaActiva === 'arma'){
+      const arma = item.arma || {};
+      if(filtros.claseArma && arma.clase !== filtros.claseArma) return false;
+      if(filtros.usoArma && (arma.uso || arma.alcanceUso) !== filtros.usoArma) return false;
+      if(filtros.propiedad && !(arma.propiedades || []).includes(filtros.propiedad)) return false;
+    }
+    if(categoriaActiva === 'armadura'){
+      const armadura = item.armadura || {};
+      if(filtros.claseArmadura && armadura.clase !== filtros.claseArmadura) return false;
+      if(filtros.destrezaCA && armadura.destreza !== filtros.destrezaCA) return false;
+      if(filtros.sigilo === 'sin_desventaja' && armadura.desventajaSigilo) return false;
+      if(filtros.sigilo === 'con_desventaja' && !armadura.desventajaSigilo) return false;
+    }
+    if(!['arma', 'armadura'].includes(categoriaActiva) && filtros.etiqueta){
+      const texto = normalizarTexto(`${item.grupo || ''} ${(item.etiquetas || []).join(' ')} ${item.nombre || ''}`);
+      if(!texto.includes(normalizarTexto(filtros.etiqueta))) return false;
+    }
+    return true;
+  }
+
+  function obtenerConfigTarjetaEquipoLibro(item){
+    if(item.categoria === 'arma') return { singular:'Arma' };
+    if(item.categoria === 'armadura') return { singular:'Armadura' };
+    if(item.categoria === 'herramienta') return { singular:'Herramienta' };
+    if(item.categoria === 'montura') return { singular:'Montura' };
+    if(item.categoria === 'vehiculo') return { singular:'Vehículo' };
+    if(item.categoria === 'servicio') return { singular:'Servicio' };
+    if(item.categoria === 'pack') return { singular:'Pack' };
+    return { singular:'Equipo' };
+  }
+
+  function renderFilaDetalleEquipoLibro(titulo, valor){
+    if(!valor && valor !== 0) return '';
+    return `<div class="equipo-detalle-fila"><span class="equipo-detalle-titulo">${escapeHtml(titulo)}</span><span class="equipo-detalle-valor">${escapeHtml(valor)}</span></div>`;
+  }
+
+  function renderCuadriculaEquipoLibro(item){
+    const config = obtenerConfigTarjetaEquipoLibro(item);
+    const filas = [
+      renderFilaDetalleEquipoLibro('Precio', item.precioDato?.texto || item.precio || '—'),
+      renderFilaDetalleEquipoLibro('Tipo', `${config.singular}${item.subtipo ? ` / ${item.subtipo}` : ''}`)
+    ];
+    if(item.categoria === 'arma'){
+      const arma = item.arma || {};
+      const dano = arma.dano ? `${arma.dano.dado || ''} ${arma.dano.tipo || ''}`.trim() : '';
+      filas.push(renderFilaDetalleEquipoLibro('Daño', dano));
+      if(arma.versatil?.dado) filas.push(renderFilaDetalleEquipoLibro('Daño secundario', `${arma.versatil.dado} ${arma.versatil.tipo || ''}`.trim()));
+      if(arma.alcance) filas.push(renderFilaDetalleEquipoLibro('Distancia', `${arma.alcance}${arma.alcanceLargo ? `/${arma.alcanceLargo}` : ''} pies`));
+    }
+    if(item.categoria === 'armadura'){
+      const armadura = item.armadura || {};
+      const ca = armadura.clase === 'escudo' ? `+${armadura.bonificadorCA || item.bonifCA || 2} CA` : (armadura.caBase ? `${armadura.caBase}${armadura.destreza === 'max2' ? ' + DES máx. +2' : armadura.destreza === 'ninguna' ? '' : ' + DES'}` : '—');
+      filas.push(renderFilaDetalleEquipoLibro('CA', ca));
+    }
+    if(item.peso) filas.push(renderFilaDetalleEquipoLibro('Peso', `${item.peso} lb`));
+    return `<div class="equipo-detalles-grid">${filas.filter(Boolean).join('')}</div>`;
+  }
+
+  function renderTarjetaEquipoLibro(item){
+    const config = obtenerConfigTarjetaEquipoLibro(item);
+    const etiquetas = (item.etiquetas || []).map(etiqueta => `<span class="equipo-etiqueta">${escapeHtml(etiqueta)}</span>`).join('');
+    return `
+      <button type="button" class="equipo-explorer-card equipo-item" data-equipo-id="${escapeHtml(item.id)}">
+        <div class="equipo-item-cabecera">
+          <strong>${escapeHtml(item.nombre)}</strong>
+          <span class="equipo-tipo">${escapeHtml(config.singular)}${item.subtipo ? ` · ${escapeHtml(item.subtipo)}` : ''}</span>
+        </div>
+        <p class="equipo-descripcion">${escapeHtml(String(item.descripcion || 'Sin descripción.').replace(/<[^>]*>/g, ''))}</p>
+        ${renderCuadriculaEquipoLibro(item)}
+        <p class="equipo-efectos"><strong>Efectos:</strong> ${escapeHtml(item.efectosTexto || obtenerDetalleMecanicoEquipo(item) || '—')}</p>
+        <div class="equipo-etiquetas">${etiquetas || '<span class="equipo-etiqueta">Sin etiquetas</span>'}</div>
+      </button>`;
+  }
+
+  function valorTablaEquipo(item, columna){
+    const arma = item.arma || {};
+    const armadura = item.armadura || {};
+    if(columna === 'nombre') return item.nombre || '—';
+    if(columna === 'tipo') return item.subtipo || obtenerConfigTarjetaEquipoLibro(item).singular;
+    if(columna === 'grupo') return obtenerGrupoEquipo(item.grupo).nombre;
+    if(columna === 'precio') return item.precioDato?.texto || item.precio || '—';
+    if(columna === 'peso') return item.peso ? `${item.peso} lb` : '—';
+    if(columna === 'dano') return arma.dano ? `${arma.dano.dado || ''} ${arma.dano.tipo || ''}`.trim() : '—';
+    if(columna === 'propiedades') return (item.etiquetas || []).filter(et=> !['Simple', 'Marcial', 'Cuerpo a cuerpo', 'Distancia'].includes(et)).join(', ') || '—';
+    if(columna === 'alcance') return arma.alcance ? `${arma.alcance}${arma.alcanceLargo ? `/${arma.alcanceLargo}` : ''} pies` : '—';
+    if(columna === 'ca') {
+      if(armadura.clase === 'escudo') return `+${armadura.bonificadorCA || item.bonifCA || 2} CA`;
+      return armadura.caBase ? `${armadura.caBase}${armadura.destreza === 'max2' ? ' + DES máx. +2' : armadura.destreza === 'ninguna' ? '' : ' + DES'}` : '—';
+    }
+    if(columna === 'sigilo') return armadura.desventajaSigilo ? 'Desventaja' : '—';
+    if(columna === 'fuerza') return armadura.fuerzaMinima || '—';
+    if(columna === 'etiquetas') return (item.etiquetas || []).join(', ') || '—';
+    return '—';
+  }
+
+  function obtenerColumnasTablaEquipo(categoria){
+    if(categoria === 'arma') return [
+      { key:'nombre', label:'Nombre' }, { key:'tipo', label:'Tipo' }, { key:'dano', label:'Daño' }, { key:'propiedades', label:'Propiedades' }, { key:'alcance', label:'Alcance' }, { key:'precio', label:'Precio' }, { key:'peso', label:'Peso' }
+    ];
+    if(categoria === 'armadura') return [
+      { key:'nombre', label:'Nombre' }, { key:'tipo', label:'Tipo' }, { key:'ca', label:'CA' }, { key:'sigilo', label:'Sigilo' }, { key:'fuerza', label:'FUE mín.' }, { key:'precio', label:'Precio' }, { key:'peso', label:'Peso' }
+    ];
+    return [
+      { key:'nombre', label:'Nombre' }, { key:'grupo', label:'Grupo' }, { key:'etiquetas', label:'Etiquetas' }, { key:'precio', label:'Precio' }, { key:'peso', label:'Peso' }
+    ];
+  }
+
+  function renderTablaEquipoComparativa(items, categoriaActiva){
+    const wrap = document.createElement('div');
+    wrap.className = 'equipo-tabla-wrap';
+    if(!items.length){
+      wrap.innerHTML = '<p class="reglas-vacio">No hay equipo que coincida con la búsqueda o filtros seleccionados.</p>';
+      return wrap;
+    }
+    const columnas = obtenerColumnasTablaEquipo(categoriaActiva);
+    wrap.innerHTML = `
+      <table class="equipo-comparativa-tabla">
+        <thead><tr>${columnas.map(col=>`<th>${escapeHtml(col.label)}</th>`).join('')}</tr></thead>
+        <tbody>
+          ${items.map(item=>`
+            <tr data-equipo-id="${escapeHtml(item.id)}" tabindex="0">
+              ${columnas.map((col, index)=>`<td ${index === 0 ? 'class="equipo-tabla-nombre"' : ''}>${escapeHtml(valorTablaEquipo(item, col.key))}</td>`).join('')}
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+    wrap.querySelectorAll('tbody tr').forEach(row=>{
+      row.addEventListener('click', ()=> pushScreen({ type:'equipoDetail', itemId: row.dataset.equipoId }));
+      row.addEventListener('keydown', event=>{ if(event.key === 'Enter' || event.key === ' ') pushScreen({ type:'equipoDetail', itemId: row.dataset.equipoId }); });
+    });
+    return wrap;
+  }
+
+  function renderEquipoExplorer(){
+    const screen = currentScreen();
+    const categoriaActiva = screen.categoria || 'arma';
+    const shouldFocusSearch = document.activeElement?.matches('.reglas-buscador-caja input');
+    const items = obtenerEquipoLibro();
+    const q = normalizarTexto(screen.query || '');
+    const filtros = screen.filtros || {};
+    const tabs = EQUIPO_CATEGORIAS.map(cat=>({ key:cat.id, label:cat.label }));
+    const filtrados = items
+      .filter(item => obtenerEquipoCategoria(item) === categoriaActiva)
+      .filter(item => itemCumpleFiltrosEquipo(item, categoriaActiva, filtros))
+      .filter(item => !q || normalizarTexto(`${item.nombre || ''} ${item.descripcion || ''} ${item.grupo || ''} ${item.categoria || ''} ${(item.etiquetas || []).join(' ')} ${obtenerDetalleMecanicoEquipo(item)}`).includes(q))
+      .sort((a,b)=> (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity:'base' }));
+
+    listaContenedor.innerHTML = '';
+    listaContenedor.appendChild(renderSubmenuHeader('Equipo', 'Explora objetos por categoría con filtros contextuales.'));
+    listaContenedor.appendChild(renderTabs(tabs, categoriaActiva, key=>{ screen.categoria = key; screen.filtros = {}; screen.filtrosAbiertos = false; renderEquipoExplorer(); }));
+    const toolbar = renderSearchBoxEquipo(screen.query || '', value=>{ screen.query = value; renderEquipoExplorer(); });
+    listaContenedor.appendChild(toolbar.box);
+    if(screen.filtrosAbiertos) toolbar.filterWrap.appendChild(renderPanelFiltrosEquipo(categoriaActiva, screen));
+
+    const resumen = document.createElement('div');
+    resumen.className = 'equipo-explorer-resumen';
+    const categoria = EQUIPO_CATEGORIAS.find(cat=>cat.id === categoriaActiva);
+    resumen.innerHTML = `<strong>${escapeHtml(categoria?.label || 'Equipo')}</strong><span>${filtrados.length} de ${items.filter(item=>obtenerEquipoCategoria(item) === categoriaActiva).length} objetos</span>`;
+    listaContenedor.appendChild(resumen);
+
+    listaContenedor.appendChild(renderTablaEquipoComparativa(filtrados, categoriaActiva));
+    enfocarBuscadorSiHaceFalta(screen.query || '', shouldFocusSearch);
+  }
+
+  function renderEquipoDetail(itemId){
+    const item = obtenerEquipoLibro().find(objeto=> objeto.id === itemId);
+    listaContenedor.innerHTML = '';
+    listaContenedor.appendChild(renderSubmenuHeader('Equipo'));
+    if(!item){ listaContenedor.innerHTML += '<p class="reglas-vacio">Objeto no encontrado.</p>'; return; }
+
+    const detalle = document.createElement('article');
+    detalle.className = 'equipo-detalle equipo-item';
+    const etiquetas = (item.etiquetas || []).map(etiqueta=>`<span class="equipo-etiqueta">${escapeHtml(etiqueta)}</span>`).join('');
+    detalle.innerHTML = `
+      <div class="equipo-item-cabecera equipo-detalle-head">
+        <div>
+          <h3>${escapeHtml(item.nombre)}</h3>
+          <p>${escapeHtml(EQUIPO_CATEGORIAS.find(cat=>cat.id === obtenerEquipoCategoria(item))?.label || 'Equipo')} · ${escapeHtml(obtenerGrupoEquipo(item.grupo).nombre)}</p>
+        </div>
+        <div class="equipo-detalle-precio">${escapeHtml(item.precioDato?.texto || item.precio || '—')}</div>
+      </div>
+      <p class="equipo-descripcion">${escapeHtml(String(item.descripcion || 'Sin descripción.').replace(/<[^>]*>/g, ''))}</p>
+      ${renderCuadriculaEquipoLibro(item)}
+      <section class="equipo-detalle-bloque">
+        <h4>Datos mecánicos</h4>
+        <p>${escapeHtml(obtenerDetalleMecanicoEquipo(item))}</p>
+      </section>
+      ${item.efectosTexto ? `<section class="equipo-detalle-bloque"><h4>Efectos / notas</h4><pre>${escapeHtml(item.efectosTexto)}</pre></section>` : ''}
+      <div class="equipo-etiquetas equipo-detalle-etiquetas">${etiquetas || '<span class="equipo-etiqueta">Sin etiquetas</span>'}</div>`;
+    listaContenedor.appendChild(detalle);
+  }
+
   function renderCategoria(cat){
     const libro = currentLibro(); if(!libro){ listaContenedor.innerHTML = '<p>No hay libros.</p>'; return; }
     if(cat==='clases') return renderClassList();
     if(cat==='razas') return renderRaceList();
+    if(cat==='equipo') return renderEquipoExplorer();
     const titulos = { dotes: 'Dotes', equipo: 'Equipo', rasgos: 'Rasgos', estados: 'Estados' };
     const items = (libro.categorias[cat] || []).map((item, index)=>({ ...item, __index: index, id: item.id || `${cat}_${index}` }));
     renderEntityList({
       title: titulos[cat] || cat,
-      searchLabel: `Buscador de ${titulos[cat] || cat}`,
       items,
       query: currentScreen().query || '',
       onQuery: value=>{ const current = currentScreen(); current.query = value; renderCategoria(cat); },
@@ -499,6 +947,8 @@
   function renderDetalleConTabs({ item, title, activeTab, rasgos, subitems, subitemsLabel, subitemsEmpty, subitemOpen, screenType, extraTabs=[], editActionsByTab={} }){
     listaContenedor.innerHTML = '';
     listaContenedor.appendChild(renderSubmenuHeader(title));
+    const accionesEdicion = renderAccionesEdicion(editActionsByTab[activeTab] || []);
+    if(accionesEdicion) listaContenedor.appendChild(accionesEdicion);
     listaContenedor.appendChild(crearDescripcionIntro(item));
     const selectionTabs = getSeleccionesDeRasgos(rasgos);
     const tabs = [{ key:'rasgos', label:'Rasgos' }];
@@ -508,8 +958,6 @@
     listaContenedor.appendChild(renderTabs(tabs, activeTab, key=>{
       const current = currentScreen(); if(current.type===screenType){ current.tab = key; renderCurrentScreen(); }
     }));
-    const accionesEdicion = renderAccionesEdicion(editActionsByTab[activeTab] || []);
-    if(accionesEdicion) listaContenedor.appendChild(accionesEdicion);
     const content = document.createElement('div'); content.className = 'clase-tab-contenido';
     const selectedSelection = selectionTabs.find(t=>t.key===activeTab);
     if(activeTab==='rasgos') content.appendChild(renderRasgosEnColumna(rasgos, title));

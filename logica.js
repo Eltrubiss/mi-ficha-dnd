@@ -721,6 +721,7 @@ let subclaseElegida = clasesActivas[0]?.subclase || null;
 const estado = {
   usaArmadura: Boolean(armaduraElegida),
   sinArmadura: !armaduraElegida,
+  tipoArmadura: armaduraElegida?.tipo || "",
   usaEscudo: Boolean(personajeConBonos.escudo),
   sinEscudo: !personajeConBonos.escudo
 };
@@ -956,13 +957,24 @@ document.getElementById("info-personaje").innerText = personajeActual.raza + ", 
 actualizarDetalleCompetencia();
 document.getElementById("BC").innerText = formatoValor(bonifCompetencia);
 ////////////////////// || RASGOS || ///////////////////////////////////
+function obtenerTipoArmaduraActiva(estado) {
+  const armaduraPersonalizada = obtenerArmaduraPersonalizadaEquipada();
+  if (armaduraPersonalizada) {
+    return String(armaduraPersonalizada.tipo || armaduraPersonalizada.subtipo || "").toLowerCase();
+  }
+  return String(estado?.tipoArmadura || armaduraElegida?.tipo || "").toLowerCase();
+}
+
 function seCumpleCondicion(condicion, estado) {
   if (!condicion) return true;
   const tieneArmaduraEquipada = Boolean(estado.usaArmadura || obtenerArmaduraPersonalizadaEquipada());
   const tieneEscudoEquipado = Boolean(estado.usaEscudo || obtenerEscudosPersonalizadosEquipados().length);
+  const tipoArmaduraActiva = obtenerTipoArmaduraActiva(estado);
+  const llevaArmaduraPesada = tieneArmaduraEquipada && tipoArmaduraActiva.includes("pesad");
   if (condicion.sinArmadura && tieneArmaduraEquipada) return false;
   if (condicion.sinEscudo && tieneEscudoEquipado) return false;
   if ((condicion.conArmadura || condicion.usaArmadura) && !tieneArmaduraEquipada) return false;
+  if (condicion.sinArmaduraPesada && llevaArmaduraPesada) return false;
   return true;
 }
 
@@ -1648,7 +1660,7 @@ function obtenerBonosDeHabilidad(nombreHabilidad, esCompetente) {
 
       items.push({
         origen: rasgo.nombre || rasgo.origen || "Rasgo",
-        valor: efecto.valor || efecto.valorDelBono || 0,
+        valor: obtenerValorEfecto(efecto),
         descripcion: rasgo.descripcionResum || `Bono de ${rasgo.origen || "rasgo"}`
       });
     });
@@ -1707,7 +1719,7 @@ function obtenerBonosDeSalvacion(stat) {
 
       items.push({
         origen: rasgo.nombre || rasgo.origen || "Rasgo",
-        valor: efecto.valor || efecto.valorDelBono || 0,
+        valor: obtenerValorEfecto(efecto),
         descripcion: rasgo.descripcionResum || `Bono de ${rasgo.origen || "rasgo"}`
       });
     });
