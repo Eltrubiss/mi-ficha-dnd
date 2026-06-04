@@ -1177,7 +1177,8 @@ function actualizarVelocidad() {
     ...detallesVelocidad
   ];
 
-  document.getElementById("Vel").innerText = velocidadTotal;
+  const velocidadElemento = document.getElementById("Vel");
+  if (velocidadElemento) velocidadElemento.innerText = velocidadTotal;
 }
 
 actualizarVelocidad();
@@ -1189,7 +1190,7 @@ function renderVida() {
   const hpTemporales = personajeActual.hpTemporales;
 
   document.getElementById("hpResumen").innerText =
-    `Puntos de Golpe: ${hpMax} / ${hpActual}`;
+    `Puntos de Golpe: ${hpActual} / ${hpMax}`;
 
   const tempTexto = document.getElementById("hpTemporalesTexto");
   if (hpTemporales > 0) {
@@ -1486,7 +1487,7 @@ function calcularCA(personaje, armaduraElegida, claseElegida, razaElegida, equip
           descripcion: "Bonificadores configurados en la armadura"
         });
       }
-    } else if (armaduraElegida) {  
+    } else if (armaduraElegida) {
     textoArmadura = armaduraElegida.nombre;
 
     if (armaduraElegida.tipo === "ligera") {
@@ -3489,6 +3490,7 @@ function renderSelectorPersonajes() {
 
 function mostrarSelectorPersonajes() {
   vistaSelectorPersonaje?.classList.remove("oculto");
+  btnCambiarPersonaje?.classList.add("oculto");
   cabeceraFicha?.classList.add("oculto");
   vistaPersonaje?.classList.add("oculto");
   vistaBuild?.classList.add("oculto");
@@ -3497,6 +3499,7 @@ function mostrarSelectorPersonajes() {
 
 function mostrarFichaActiva() {
   vistaSelectorPersonaje?.classList.add("oculto");
+  btnCambiarPersonaje?.classList.remove("oculto");
   cabeceraFicha?.classList.remove("oculto");
   cambiarVistaPersonaje("personaje");
 }

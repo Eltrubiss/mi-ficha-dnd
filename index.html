@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="ficha.css">
 
@@ -25,9 +26,9 @@
         <div class="selector-personaje-grid" id="listadoPersonajes" aria-live="polite"></div>
     </section>
 
+    <button id="btnCambiarPersonaje" class="boton-cambiar-personaje oculto" type="button">&lt; Cambiar personaje</button>
     <div class="panel-Personaje cabecera-personaje oculto" id="cabeceraFicha">
         <div class="personaje-principal">
-            <button id="btnCambiarPersonaje" class="boton-cambiar-personaje" type="button">&lt; Cambiar personaje</button>
             <div class="datos-personaje">
                 <h2 class="titulo-nombre" id="nombre-personaje"> [Nombre]</h2>
                 <p class="Info-personaje" id="info-personaje">[Raza], [Clase] [Nivel]</p>
@@ -108,17 +109,6 @@
             <details class="panel-vida combate-detalles" id="panel-vida" open>
                 <summary>Seguimiento de Combate</summary>
                 <div class="vida-grid">
-                    <div class="vida-contenedor">
-                        <div class="vida-controles">
-                            <input type="number" id="hpInput" min="0" value="1"/>
-
-                            <div class="botones-vida">
-                                <button id="btnCuracion" type="button">Curación</button>
-                                <button id="btnDano" type="button">Daño</button>
-                                <button id="btnTemporales" type="button">PG temporales</button>
-                            </div>
-                        </div>
-                    </div>
                     <div class="vida-seguimiento">
                         <div class="vida-info">
                             <div class="vida-barra" id="barraVidaContenedor">
@@ -141,13 +131,24 @@
                             </label>
                         </div>
                     </div>
+                    <div class="vida-contenedor">
+                        <div class="vida-controles">
+                            <input type="number" id="hpInput" min="0" value="1"/>
+
+                            <div class="botones-vida">
+                                <button id="btnDano" type="button">Daño</button>
+                                <button id="btnCuracion" type="button">Curación</button>
+                                <button id="btnTemporales" type="button">PG temporales</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="ataques-combate caja-combate-ataques">
                     <h3>Ataque</h3>
                     <div id="ataquesCombateLista" class="ataques-combate-lista"></div>
                 </div>
                 <div class="estado-panel">
-                    <label for="selectEstado">Estados</label>
+                    <h3 for="selectEstado">Estados</h3>
                     <div class="estado-agregar">
                         <select id="selectEstado">
                             <option value="">Agregar estado...</option>
