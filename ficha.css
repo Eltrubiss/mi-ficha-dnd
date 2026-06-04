@@ -1910,19 +1910,6 @@ details[open] > summary::before {
 /* Ajustes específicos para pantallas pequeñas: rasgos y tarjetas */
 @media (max-width: 600px) {
 
-    .desplegable-contenido {
-        align-items: stretch;
-        display: grid;
-        gap: 10px;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .desplegable-contenido > .desplegable-subseccion,
-    .desplegable-contenido > p {
-        grid-column: 2 / -1;
-    }
-    .desplegable-subseccion .desplegable-contenido {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
     .rasgo-item {
         padding: 6px 8px;
     }
