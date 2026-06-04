@@ -712,8 +712,8 @@ let claseElegida = libroDeReglasBasicas.clases.find(c => c.id === personajeActua
 let clasesActivas = obtenerSlotsClases();
 let razaElegida = libroDeReglasBasicas.razas.find(r => r.id === personajeActual.raza.toLowerCase());
 let armaduraElegida = libroDeReglasBasicas.armaduras.find(a => a.id === personajeActual.armadura);
-let subrazaElegida = razaElegida && razaElegida.subrazas 
-    ? razaElegida.subrazas.find(s => s.id === personajeActual.subraza?.toLowerCase()) 
+let subrazaElegida = razaElegida && razaElegida.subrazas
+    ? razaElegida.subrazas.find(s => s.id === personajeActual.subraza?.toLowerCase())
     : null;
 
 let subclaseElegida = clasesActivas[0]?.subclase || null;
@@ -729,13 +729,13 @@ const estado = {
 function calcularModificadorNumero(puntuacion) { // Modificador para cálculos (Number).
 return Math.floor((puntuacion - 10) / 2);
 }
-function calcularModificador(puntuacion) { // Modificador para mostrar con signo (String). 
+function calcularModificador(puntuacion) { // Modificador para mostrar con signo (String).
 let resultado = calcularModificadorNumero(puntuacion);
 
 if (resultado >= 0) {
-    return "+" + resultado; 
+    return "+" + resultado;
 } else {
-    return resultado; 
+    return resultado;
 }
 }
 
@@ -2021,7 +2021,7 @@ function renderRasgos() {
     if (razaElegida) {
         html += `<details open class="desplegable-seccion">
                     <summary class="desplegable-titulo">Raza: ${textoSeguro(razaElegida.nombre)}</summary>                    <div class="desplegable-contenido">`;
-        
+
         if (razaElegida.rasgos && razaElegida.rasgos.length > 0) {
             razaElegida.rasgos.forEach(rasgo => {
                 html += renderTarjetaRasgoFicha(rasgo, razaElegida.nombre);
@@ -2033,14 +2033,14 @@ function renderRasgos() {
             html += `<details open class="desplegable-subseccion">
                         <summary class="desplegable-subtitulo">Subraza: ${textoSeguro(subrazaElegida.nombre)}</summary>
                         <div class="desplegable-contenido">`;
-            
+
             subrazaElegida.rasgos.forEach(rasgo => {
                 html += renderTarjetaRasgoFicha(rasgo, subrazaElegida.nombre);
                 html += renderRasgosElegidosPorSeleccion(rasgo, "subraza", subrazaElegida.nombre);
             });
             html += `</div></details>`;
         }
-        
+
         html += `</div></details>`;
     }
 
@@ -2050,7 +2050,7 @@ function renderRasgos() {
     clasesActivas.filter(slot => slot.clase && slot.nivel > 0).forEach(slot => {
         html += `<details open class="desplegable-seccion" style="margin-top: 15px;">
                     <summary class="desplegable-titulo">Clase ${slot.numeroSlot}: ${textoSeguro(slot.clase.nombre)} nivel ${slot.nivel}</summary>                    <div class="desplegable-contenido">`;
-        
+
         if (slot.clase.rasgos && slot.clase.rasgos.length > 0) {
             let tieneRasgosClase = false;
             slot.clase.rasgos.forEach(rasgo => {
@@ -2061,7 +2061,7 @@ function renderRasgos() {
                     html += renderRasgosElegidosPorSeleccion(rasgo, `clase${slot.numeroSlot}`, slot.clase.nombre);
                 }
             });
-  
+
             if (!tieneRasgosClase) {
                 html += `<p style="color: #776a62; font-style: italic; font-size: 13px; margin-left: 10px;">Aún no tienes rasgos desbloqueados para tu nivel de ${textoSeguro(slot.clase.nombre)}.</p>`;            }
         }
@@ -2085,7 +2085,7 @@ function renderRasgos() {
 
             html += `</div></details>`;
         }
-        
+
         html += `</div></details>`;
     });
 
@@ -2097,30 +2097,30 @@ function renderRasgos() {
 function abrirPopupRasgo(indice) {
     let rasgo = listaRasgosActuales[indice];
     if (!rasgo) return;
-    
+
     let requisitosHTML = "";
     if (rasgo.requisitos) {
         requisitosHTML = `<p style="margin: 0 0 5px 0;"><strong>Requisitos:</strong> ${rasgo.requisitos}</p>`;
     }
-    
+
     // Armamos el contenido estructurado de arriba hacia abajo de forma natural
     let contenido = `
         <div style="text-align: left; display: flex; flex-direction: column; height: 100%;">
             <h3 style="color: #5a4035; margin: 0 0 10px 0; border-bottom: 2px solid #5a4035; padding-bottom: 8px; font-family: Georgia, serif; font-size: 22px;">
                 ${rasgo.nombre}
             </h3>
-            
+
             <div style="background-color: #f3ead7; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; border: 1px solid #dccbb0; color: #5a4035;">
                 <p style="margin: 0 0 5px 0;"><strong>Rasgo de </strong> ${rasgo.origen}</p>
                 ${requisitosHTML}
             </div>
-            
+
             <div style="line-height: 1.6; color: #2b2521; font-size: 14.5px; overflow-y: auto; max-height: 50vh; padding-right: 5px;">
                 ${rasgo.descripcion}
             </div>
         </div>
     `;
-    
+
     document.getElementById("popup-rasgo-contenido").innerHTML = contenido;
     document.getElementById("popup-rasgo").classList.remove("oculto");
 }
@@ -3215,7 +3215,7 @@ function renderAccionesItemEquipo(item) {
       <button class="equipo-mini-btn equipo-boton-rojo" type="button" onclick="abrirPopupConfirmarEliminarEquipo('${item.id}')">Eliminar</button>`
     : "";
   if (!botonEquipado && !botonesEdicion) return "";
-  
+
   return `
     <div class="equipo-item-acciones">
       ${botonesEdicion}
@@ -3419,7 +3419,7 @@ function obtenerNombreRaza(razaId) {
   return libroDeReglasBasicas.razas.find(raza => raza.id === razaId)?.nombre || razaId || "Raza";
 }
 
-  
+
 function obtenerSubclasePorId(claseId, subclaseId) {
   return obtenerSubclasesDeClase(obtenerClasePorId(claseId))
     .find(subclase => subclase.id === subclaseId) || null;
