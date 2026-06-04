@@ -1,7 +1,7 @@
 /* Sistema visual de la ficha: paleta cálida con acentos naranja y verde. */
 :root {
     --fuente-principal: "Montserrat", Arial, sans-serif;
-    --fuente-display: Georgia, "Times New Roman", serif;
+    --fuente-display: Italic, "Poppins", serif;
 
     --color-fondo-pagina: #f1dfb8;
     --color-panel: #fff2dc;
@@ -66,19 +66,29 @@ body {
 .fila-extra {
     display: flex;
     flex-wrap: wrap;
+    gap: 12px;
+    grid-template-rows: repeat(4, minmax(112px, 1fr));
     justify-content: center;
-    gap: 5px;
-    padding: 0 17px;
+    margin: 20px auto 0;
+    max-width: 720px;
+    padding: 0 10px;
     width: 100%;
-    margin-top: 20px;
+}
+.fila-extra .caja-extra {
+    min-width: 0;
+    width: calc(20% - 13px);
+}
+@media (max-width: 1100px) {
+    .fila-extra {
+        grid-template-columns: repeat(2, minmax(130px, 220px));
+        max-width: 500px;
+    }
+    .fila-extra .caja-extra {
+    min-width: 0;
+    width: calc(33.333% - 11px);
+    }
 }
 
-/* 2. Un truco nuevo: Le damos ancho solo a las cajas de esta fila */
-.fila-extra .caja-extra {
-    min-width: 40px;
-    max-width: 120px;
-    flex: 1; /* Permite que crezcan un poco para compartir el espacio */
-}
 @media (max-width: 900px) {
 
     .fila-stats {
@@ -119,6 +129,7 @@ body {
     width: 100%; /* Evita que el panel se estire infinitamente */
     text-align: center; /* Centra el texto dentro del panel */
 }
+
 .panel-Personaje {
     background-color: var(--color-panel); /* Un color más claro para el panel */
     border-radius: 15px;
@@ -154,29 +165,52 @@ body {
     transform: translateY(-2px);
 }
 .caja-extra {
-    border: 2px solid var(--color-borde); /* Borde oscuro */
-    border-radius: 10px; /* Bordes redondeados */
-    background-color: var(--color-superficie); /* Fondo blanco */
-    text-align: center; /* Todo el texto centrado */
-    padding: 5px; /* Espacio adentro de la caja */
+    background: #f3e4cf;
+    border: 1px solid #c7a89a;
+    border-radius: 18px;
+    box-shadow: 0 10px 18px rgba(90, 64, 53, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.62);
+    min-height: 118px;
+    overflow: hidden;
+    padding: 14px 10px 12px;
+    position: relative;
+    text-align: center;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.caja-extra::before {
+    background: #df702c;
+    border-radius: 999px;
+    content: "";
+    height: 4px;
+    left: 22%;
+    position: absolute;
+    right: 22%;
+    top: 8px;
+}
+.caja-extra.clickable:hover {
+    border-color: #df702c;
+    box-shadow: 0 14px 24px rgba(90, 64, 53, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+    transform: translateY(-3px);
 }
 
 .titulo-panel {
     margin-top: 0;
     color: var(--color-texto);
-    font-family: var(--fuente-display);
+    font-family: "Poppins", Georgia, serif;
+    font-weight: 700;
 }
 .titulo-nombre {
     margin-top: 0;
     color: var(--color-texto);
     border-bottom: 2px solid var(--color-texto);
     padding-bottom: 10px;
-    font-family: var(--fuente-display);
+    font-family: "Poppins", Georgia, serif;
+    font-weight: 700;
 }
 /* Letra pequeña para el título (Fuerza) */
 .titulo-stat {
+    font-family: "Poppins", Arial, sans-serif;
     font-size: 14px;
-    font-weight: bold;
+    font-weight: 700;
     margin: 0;
     text-transform: uppercase;
 
@@ -187,8 +221,11 @@ body {
     justify-content: center;
 }
 .titulo-extra {
-    font-size: 10px;
-    font-weight: bold;
+    color: #7a5c43;
+    font-family: "Poppins", Arial, sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
     margin: 0;
     text-transform: uppercase;
 
@@ -199,11 +236,15 @@ body {
     justify-content: center;
 }
 .Info-personaje {
+    color: #916a59;
     font-size: 12px;
     font-weight: bold;
-    color: var(--color-texto-suave);
-    margin: -10px 0;
+    line-height: 1.45;
+    margin: -6px 0 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
     text-transform: uppercase;
+    white-space: normal;
 }
 /* Letra gigante para el número principal (16) */
 .modificador-stat {
@@ -281,10 +322,13 @@ body {
     gap: 8px;
     text-align: left;
 }
-.ataques-combate h3 {
+.ataques-combate h3,
+.estado-panel h3 {
     font-family: var(--fuente-display);
     margin: 0;
     text-align: center;
+    border-bottom: 2px dotted var(--color-borde-suave);
+    margin-bottom: 6px;
 }
 .ataques-combate-lista {
     display: grid;
@@ -416,15 +460,8 @@ body {
     border-radius: 10px;
     background-color: var(--color-superficie);
     color: var(--color-texto);
-    margin-top: 12px;
+    margin-top: 10px;
     padding: 12px;
-    text-align: left;
-}
-.estado-panel label {
-    display: block;
-    font-size: 0.95rem;
-    font-weight: 700;
-    margin-bottom: 6px;
 }
 .estado-agregar {
     display: flex;
@@ -528,6 +565,9 @@ body {
 }
 
 /* //////////////// Navegación ficha/build ////////////////// */
+.boton-cambiar-personaje {
+    margin: 0 0 10px;
+}
 .cabecera-personaje {
     display: grid;
     grid-template-columns: minmax(180px, 1fr) auto auto;
@@ -658,30 +698,38 @@ body {
     background-color: var(--color-acento);
 }
 .acciones-personaje {
+    align-items: flex-end;
     display: flex;
-    justify-content: flex-end;
-    gap: 8px;
     flex-wrap: wrap;
+    gap: 0;
+    justify-content: flex-end;
 }
 .acciones-personaje button,
 .build-boton {
-    border: none;
-    border-radius: 10px;
-    background: var(--color-borde);
-    color: var(--color-texto-fuerte);
-    padding: 20px 24px;
-    font-weight: 700;
+    background: #4a342b;
+    border: 1px solid #3a271f;
+    border-bottom-color: #cbb898;
+    border-radius: 16px 16px 0 0;
+    color: #9b877d;
     cursor: pointer;
-    transition: background-color 0.18s ease, color 0.18s ease;
+    font-family: "Poppins", Arial, sans-serif;
+    font-weight: 700;
+    margin-left: 6px;
+    min-height: 48px;
+    padding: 12px 24px;
+    position: relative;
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 .acciones-personaje button:hover,
 .build-boton:hover {
-    background-color: var(--color-superficie-alt);
-    color: var(--color-acento);
+    color: #c6b1a4;
+    transform: translateY(-2px);
 }
 .vista-activa {
-    background-color: var(--color-texto) !important;
-    color: var(--color-superficie) !important;
+    background-color: #eaddc5 !important;
+    border-color: #cbb898 #cbb898 #eaddc5 !important;
+    color: #5a4035 !important;
+    transform: translateY(1px);
 }
 .layout-build {
     display: flex;
@@ -1110,7 +1158,7 @@ body {
         transform: none;
     }
     .panel-ventanas {
-        border-radius: 18px;
+        border-radius: 0 0 18px 18px !important;
     }
     .selector-inicial-personaje {
         margin: 20px auto;
@@ -1728,15 +1776,17 @@ body {
 /*/////////////////Popup de rasgos/////////////////*/
 .rasgo-tarjeta-boton {
     background-color: var(--color-superficie);
-    border: 1px solid var(--color-borde-suave);
     border-left: 4px solid var(--color-texto); /* Un detalle elegante al costado */
-    border-radius: 6px;
-    padding: 10px 14px;
-    margin-bottom: 8px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
     cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 118px;
+    padding: 12px 14px;
     text-align: left;
     transition: all 0.2s ease-in-out; /* Suaviza la animación del hover */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
 }
 
 /* EFECTO HOVER: Se activa cuando el mouse pasa por encima */
@@ -1775,7 +1825,7 @@ body {
     border: 1px solid var(--color-borde-suave);
     border-radius: 8px;
     margin-bottom: 10px;
-    overflow: hidden; /* Evita que el contenido se salga de los bordes redondeados */
+    overflow: visible; /* Permite que subsecciones y popups no fuercen ni recorten el grid */
 }
 
 .desplegable-subseccion {
@@ -1817,6 +1867,27 @@ body {
 .desplegable-contenido {
     padding: 10px;
 }
+.desplegable-contenido > div {
+    min-width: 0;
+}
+@media (min-width: 900px) {
+    .desplegable-contenido {
+        align-items: stretch;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .desplegable-contenido > .desplegable-subseccion,
+    .desplegable-contenido > p {
+        grid-column: 2 / -1;
+    }
+    .desplegable-subseccion .desplegable-contenido {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .rasgo-tarjeta-boton {
+        margin-bottom: 0;
+    }
+}
 
 /* Ocultar el triangulito feo por defecto de Safari/Chrome antiguo (Opcional, pero recomendado) */
 details > summary {
@@ -1838,10 +1909,19 @@ details[open] > summary::before {
 }
 /* Ajustes específicos para pantallas pequeñas: rasgos y tarjetas */
 @media (max-width: 600px) {
+
     .desplegable-contenido {
+        align-items: stretch;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 8px;
+        gap: 10px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .desplegable-contenido > .desplegable-subseccion,
+    .desplegable-contenido > p {
+        grid-column: 2 / -1;
+    }
+    .desplegable-subseccion .desplegable-contenido {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .rasgo-item {
         padding: 6px 8px;
