@@ -3124,7 +3124,7 @@ function describirDanoEquipo(item, secundario = false) {
   const stat = secundario ? (item.danoModSecundario || item.danoMod || "FUE") : (item.danoMod || "FUE");
   if (!dado && !tipo && !critico) return "";
   const mod = obtenerModificadorStatEquipo(stat);
-  return `${[dado, tipo].filter(Boolean).join(" ") || "—"} ${formatoValor(mod)} (${stat})${critico ? ` · crítico ${critico}` : ""}`;
+  return `${[dado, formatoValor(mod),tipo].filter(Boolean).join(" ") || "—"} (${stat})${critico ? ` · crítico ${critico}` : ""}`;
 }
 
 function obtenerArmasEquipadasCombate() {
