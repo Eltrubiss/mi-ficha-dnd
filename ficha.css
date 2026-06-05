@@ -40,7 +40,7 @@ body {
 
     gap: 20px;
 
-    align-items: start;
+    align-items: stretch;
 }
 .columna-izquierda,
 .columna-derecha {
@@ -59,33 +59,24 @@ body {
     justify-content: center;
     padding: 12px;
     border-radius: 18px;
-    background: linear-gradient(135deg, var(--color-borde-suave), var(--color-panel-suave));
+    background: var(--color-borde-suave);
     border: 1px solid var(--color-borde-suave);
     box-shadow: inset 0 0 0 1px rgba(255,255,255,0.55);
 }
 .fila-extra {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    grid-template-rows: repeat(4, minmax(112px, 1fr));
+    display: grid;
+    grid-template-columns: repeat(5, minmax(76px, 1fr));
+    gap: 10px;
     justify-content: center;
-    margin: 20px auto 0;
-    max-width: 720px;
-    padding: 0 10px;
-    width: 100%;
-}
-.fila-extra .caja-extra {
-    min-width: 0;
-    width: calc(20% - 13px);
+    margin: 10px 10px 0 10px;
 }
 @media (max-width: 1100px) {
-    .fila-extra {
-        grid-template-columns: repeat(2, minmax(130px, 220px));
-        max-width: 500px;
+    .fila-stats {
+        gap: 5px;
     }
-    .fila-extra .caja-extra {
-    min-width: 0;
-    width: calc(33.333% - 11px);
+    .fila-extra {
+        grid-template-columns: repeat(5, minmax(130px, 220px));
+        gap: 7px;
     }
 }
 
@@ -94,7 +85,6 @@ body {
     .fila-stats {
         grid-template-columns: repeat(6, minmax(36px, 1fr));
     }
-
     /* En pantallas pequeñas compactamos el contenido sin partir las características. */
     .caja-stat {
         padding: 5px;
@@ -105,6 +95,9 @@ body {
     .valor-stat {
         font-size: 24px;
         margin: 5px 0;
+    }
+    .subtitulo-extra {
+        font-size: 22px;
     }
     .layout-principal {
         grid-template-columns: repeat(1, 1fr);
@@ -133,10 +126,10 @@ body {
 .panel-Personaje {
     background-color: var(--color-panel); /* Un color más claro para el panel */
     border-radius: 15px;
-    padding: 20px;/* Espacio para que las cajas no toquen los bordes */
     margin: 0 auto;
-    margin-bottom: 10px; /* Centra todo el panel gigante en el medio de la pantalla */
-    width: 100%; /* Evita que el panel se estire infinitamente */
+    margin-bottom: 40px; /* Centra todo el panel gigante en el medio de la pantalla */
+    min-height: 160px;
+    width: 80%; /* Evita que el panel se estire infinitamente */
     text-align: left; /* Centra el texto dentro del panel */
 }
 .panel-ventanas {
@@ -165,26 +158,19 @@ body {
     transform: translateY(-2px);
 }
 .caja-extra {
+    display: grid;
+    grid-template-rows: 15% 3em 20px;;
+    align-items: center;
     background: #f3e4cf;
     border: 1px solid #c7a89a;
     border-radius: 18px;
     box-shadow: 0 10px 18px rgba(90, 64, 53, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.62);
-    min-height: 118px;
+    min-height: 90px;
     overflow: hidden;
     padding: 14px 10px 12px;
     position: relative;
     text-align: center;
     transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-}
-.caja-extra::before {
-    background: #df702c;
-    border-radius: 999px;
-    content: "";
-    height: 4px;
-    left: 22%;
-    position: absolute;
-    right: 22%;
-    top: 8px;
 }
 .caja-extra.clickable:hover {
     border-color: #df702c;
@@ -199,10 +185,8 @@ body {
     font-weight: 700;
 }
 .titulo-nombre {
-    margin-top: 0;
+    margin: 0 0 5px 0;
     color: var(--color-texto);
-    border-bottom: 2px solid var(--color-texto);
-    padding-bottom: 10px;
     font-family: "Poppins", Georgia, serif;
     font-weight: 700;
 }
@@ -223,13 +207,13 @@ body {
 .titulo-extra {
     color: #7a5c43;
     font-family: "Poppins", Arial, sans-serif;
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 800;
     letter-spacing: 0.04em;
     margin: 0;
     text-transform: uppercase;
 
-    min-height: 22px;
+    min-height: 10px;
 
     display: flex;
     align-items: center;
@@ -239,12 +223,9 @@ body {
     color: #916a59;
     font-size: 12px;
     font-weight: bold;
-    line-height: 1.45;
     margin: -6px 0 0;
     max-width: 100%;
-    overflow-wrap: anywhere;
     text-transform: uppercase;
-    white-space: normal;
 }
 /* Letra gigante para el número principal (16) */
 .modificador-stat {
@@ -263,13 +244,20 @@ body {
     cursor: pointer;
     transition: background-color 0.15s ease, border-color 0.15s ease;
 }
-
+.subtitulo-extra {
+    color: var(--color-texto-suave);
+    border-top: 1px solid #ccc;
+    padding-top: 5px;
+    font-size: 10px;
+    font-weight: 400;
+    margin: 0;
+}
 /* /////////// Caja Barra de Vida /////////////*/
 .combate-detalles summary {
     color: var(--color-texto);
     cursor: pointer;
     font-family: var(--fuente-display);
-    font-size: 1.35rem;
+    font-size: 1rem;
     font-weight: 700;
     list-style: none;
     margin-bottom: 16px;
@@ -322,8 +310,8 @@ body {
     gap: 8px;
     text-align: left;
 }
-.ataques-combate h3,
-.estado-panel h3 {
+.ataques-combate h4,
+.estado-panel h4 {
     font-family: var(--fuente-display);
     margin: 0;
     text-align: center;
@@ -431,7 +419,7 @@ body {
     color: var(--color-texto);
     text-align: left;
 }
-.caja-inspiracion .titulo-extra {
+.caja-inspiracion {
     margin: 0 0 8px 0;
     text-align: center;
 }
@@ -575,10 +563,23 @@ body {
     gap: 18px;
 }
 .personaje-principal {
+    align-self: self-start;
     display: flex;
     flex-direction: column;
     gap: 10px;
+    margin: 14px 0 14px 14px;
+
 }
+.controles-principal {
+    margin: 14px 14px 0 0;
+    display: grid;
+    overflow: hidden;
+    justify-content: right;
+    align-items: center;
+    gap: 8px;
+    grid-template-columns: repeat(1, minmax(180px, 220px));
+}
+
 .selector-inicial-personaje {
     background-color: var(--color-panel);
     border-radius: 18px;
@@ -628,8 +629,7 @@ body {
     font-weight: 700;
 }
 .controles-personaje select {
-    min-height: 58px;
-    min-width: 92px;
+    width: 100%;
     padding: 18px 22px;
 }
 .campo-buscador-personaje input {
@@ -698,11 +698,12 @@ body {
     background-color: var(--color-acento);
 }
 .acciones-personaje {
-    align-items: flex-end;
     display: flex;
     flex-wrap: wrap;
     gap: 0;
-    justify-content: flex-end;
+    justify-content: center;
+    margin-bottom: -7px;
+    align-items: end;
 }
 .acciones-personaje button,
 .build-boton {
@@ -716,6 +717,7 @@ body {
     font-weight: 700;
     margin-left: 6px;
     min-height: 48px;
+    width: 100%;
     padding: 12px 24px;
     position: relative;
     transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
@@ -726,7 +728,7 @@ body {
     transform: translateY(-2px);
 }
 .vista-activa {
-    background-color: #eaddc5 !important;
+    background-color: var(--color-fondo-pagina) !important;
     border-color: #cbb898 #cbb898 #eaddc5 !important;
     color: #5a4035 !important;
     transform: translateY(1px);
@@ -1133,15 +1135,8 @@ body {
     padding: 9px 12px;
 }
 @media (max-width: 900px) {
-    .cabecera-personaje {
-        grid-template-columns: 1fr;
-    }
     .selector-personaje-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .controles-personaje,
-    .acciones-personaje {
-        justify-content: flex-start;
     }
     .vida-grid {
         grid-template-columns: 1fr;
@@ -1157,8 +1152,12 @@ body {
         border-radius: 12px !important;
         transform: none;
     }
+    .fila-ventanas button::id
     .panel-ventanas {
         border-radius: 0 0 18px 18px !important;
+    }
+    .panel-Personaje {
+        width: 100%;
     }
     .selector-inicial-personaje {
         margin: 20px auto;
@@ -1377,12 +1376,28 @@ body {
     min-height: 160px;
     padding: 14px;
 }
-.equipo-caja-central h3 {
+.equipo-caja-central-lista {
+        background: var(--color-panel-suave);
+    border: 1px solid var(--color-borde-suave);
+    border-radius: 16px;
+    box-shadow: 0 8px 18px var(--color-sombra-suave);
+    min-height: 160px;
+    padding: 14px 0;
+}
+.equipo-caja-central h4 {
     border-bottom: 2px solid var(--color-texto);
     color: var(--color-texto);
     font-family: var(--fuente-display);
     margin: 0 0 12px;
     padding-bottom: 8px;
+    text-align: center;
+}
+.equipo-caja-central-lista h4 {
+    border-bottom: 2px solid var(--color-texto);
+    color: var(--color-texto);
+    font-family: var(--fuente-display);
+    margin: 0 0 12px;
+    padding: 8px;
     text-align: center;
 }
 .monedas-grid {
@@ -1418,8 +1433,7 @@ body {
     margin-top: 4px;
 }
 .equipo-seccion {
-    border: 1px solid var(--color-borde-suave);
-    border-radius: 12px;
+    border: 1px 1px 0  solid var(--color-borde-suave);
     margin-bottom: 10px;
     overflow: hidden;
 }
@@ -1458,17 +1472,15 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 12px;
     text-align: left;
+    padding: 10px 12px;
 }
 .equipo-item {
     background: var(--color-superficie);
-    border: 1px solid var(--color-borde-suave);
     color: var(--color-texto-fuerte);
-    border-radius: 12px;
     display: grid;
     gap: 8px;
-    padding: 10px 12px;
+    padding: 6px 8px;
 }
 .equipo-item-cabecera {
     align-items: start;
@@ -1498,6 +1510,7 @@ body {
     margin: 0;
 }
 .equipo-tipo {
+    margin-left: auto;
     background: var(--color-superficie-alt);
     border-radius: 999px;
     color: var(--color-texto);
@@ -1519,26 +1532,31 @@ body {
     font-size: 0.78rem;
     padding: 3px 8px;
 }
-.equipo-detalles-grid,
 .equipo-bonificadores-lista {
     display: grid;
     gap: 6px;
 }
-.equipo-detalles-grid {
-    border: 1px solid var(--color-borde-suave);
-    border-radius: 10px;
-    overflow: hidden;
-}
-.equipo-detalle-fila {
-    align-items: stretch;
+
+.equipo-resumen{
     background: var(--color-superficie);
-    display: grid;
-    grid-template-columns: 120px 1fr;
-    min-height: 34px;
+    border: 1px 0 solid var(--color-borde-suave);
+    color: var(--color-texto-fuerte);
+    border-bottom: 2px solid var(--color-borde-suave);
 }
-.equipo-detalle-fila + .equipo-detalle-fila {
-    border-top: 1px solid var(--color-borde-suave);
+.equipo-resumen-cabecera{
+    align-items: start;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
 }
+
+.equipo-resumen summary{
+    cursor: pointer;
+    background: var(--color-panel-suave);
+    font-weight: 600;
+    font-size: 0.88rem;
+}
+
 .equipo-detalle-titulo {
     align-items: center;
     background: var(--color-superficie-alt);
@@ -1593,7 +1611,7 @@ body {
     background: #8b2d20;
 }
 .equipo-item-desequipado {
-    background: var(--color-superficie-alt);
+    background: var(--color-superficie);
     opacity: 0.72;
 }
 .equipo-item-acciones {
@@ -1643,9 +1661,6 @@ body {
 }
 @media (max-width: 700px) {
     .equipo-popup-fila.equipo-popup-fila-tres {
-        grid-template-columns: 1fr;
-    }
-    .equipo-detalle-fila {
         grid-template-columns: 1fr;
     }
 }
@@ -1875,21 +1890,20 @@ body {
         align-items: stretch;
         display: grid;
         gap: 10px;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(1, minmax(0, 1fr));
     }
     .desplegable-contenido > .desplegable-subseccion,
     .desplegable-contenido > p {
-        grid-column: 2 / -1;
+        grid-column: 1 / -1;
     }
     .desplegable-subseccion .desplegable-contenido {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(1, minmax(0, 1fr));
     }
     .rasgo-tarjeta-boton {
         margin-bottom: 0;
     }
 }
 
-/* Ocultar el triangulito feo por defecto de Safari/Chrome antiguo (Opcional, pero recomendado) */
 details > summary {
     list-style: none;
 }
@@ -1947,7 +1961,6 @@ details[open] > summary::before {
 
 .acciones-personaje button,
 .build-boton,
-.boton-cambiar-personaje,
 .selector-personaje-barra button {
     min-height: 44px;
 }
@@ -1955,7 +1968,9 @@ details[open] > summary::before {
 .fila-stats {
     grid-template-columns: repeat(6, minmax(42px, 1fr));
 }
-
+.fila-extra {
+    grid-template-columns: repeat(5, minmax(32px, 1fr));
+}
 .fila-ventanas {
     display: grid;
 }
@@ -2000,14 +2015,18 @@ details[open] > summary::before {
     }
 
     .cabecera-personaje {
-        grid-template-columns: minmax(150px, 1fr) auto auto;
+        grid-template-columns: repeat(1, minmax(0, 1fr));
         align-items: center;
-        padding: 14px;
     }
 
     .personaje-principal {
         gap: 6px;
         min-width: 0;
+        margin: 14px 14px 0 14px;
+    }
+
+    .controles-principal {
+        margin: 0 14px 0 14px;
     }
 
     .titulo-nombre {
@@ -2017,11 +2036,6 @@ details[open] > summary::before {
         white-space: nowrap;
     }
 
-    .Info-personaje {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
 
     .acciones-personaje button,
     .build-boton,
@@ -2030,14 +2044,14 @@ details[open] > summary::before {
     }
 
     .controles-personaje select {
-        min-height: 44px;
-        min-width: 74px;
+        width: 100%;
         padding: 10px 12px;
     }
 
-    .panel-estadisticas,
+    .panel-estadisticas {
+        padding: 8px;
+    }
     .panel-vida,
-    .panel-Personaje,
     .panel-ventanas,
     .panel-build {
         padding: 14px;
@@ -2045,8 +2059,12 @@ details[open] > summary::before {
 
     .fila-stats {
         grid-template-columns: repeat(6, minmax(36px, 1fr));
-        gap: 5px;
+        gap: 3px;
         padding: 8px;
+    }
+    .fila-extra {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 4px;
     }
 
     .caja-stat {
@@ -2058,6 +2076,10 @@ details[open] > summary::before {
         min-height: 18px;
     }
 
+    .titulo-extra {
+        font-size: clamp(0.5rem, 2.3vw, 0.68rem);
+    }
+
     .modificador-stat {
         font-size: clamp(1rem, 4.5vw, 1.45rem);
         margin: 6px 0;
@@ -2066,6 +2088,11 @@ details[open] > summary::before {
     .valor-stat {
         font-size: clamp(0.58rem, 2.4vw, 0.75rem);
     }
+    .subtitulo-extra {
+        font-size: clamp(0.48rem, 2vw, 0.68rem);
+    }
+
+
 
     .fila-ventanas {
         grid-template-columns: repeat(4, minmax(72px, 1fr));
@@ -2075,7 +2102,6 @@ details[open] > summary::before {
 
 @media (max-width: 520px) {
     .cabecera-personaje {
-        grid-template-columns: minmax(132px, 1fr) auto auto;
         gap: 6px;
     }
 
@@ -2083,14 +2109,17 @@ details[open] > summary::before {
         gap: 4px;
     }
 
-    .acciones-personaje button,
-    .boton-cambiar-personaje {
+    .acciones-personaje button {
         font-size: 0.78rem;
         padding: 8px 9px;
     }
 
+    .boton-cambiar-personaje {
+        font-size: 0.6rem;
+    }
+
     .controles-personaje select {
-        min-width: 64px;
+        width: 100%;
         padding: 8px;
     }
 }

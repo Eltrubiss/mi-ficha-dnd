@@ -596,15 +596,17 @@ let libroDeReglasBasicas = {
     ]
   },
   clases: [
-    {
-      id: "barbaro",
+    { id: "barbaro",
       nombre: "Bárbaro",
       descripcion: "Combatiente salvaje que convierte la furia, la resistencia y la fuerza bruta en su principal respuesta ante el peligro.",
       dadoDeGolpe: 12,
       competencias: {
         salvaciones: ["FUE", "CON"],
         habilidades: [],
-        armas: { descripcion: "Armas simples y marciales", competencias: ["armasSimples", "armasMarciales"] },
+        armas: {
+          descripcion: "Armas simples y marciales",
+          competencias: ["armasSimples", "armasMarciales"]
+        },
         armaduras: { descripcion: "Armaduras ligeras, medias y escudos", competencias: ["ligera", "media", "escudo"] },
         herramientas: "Ninguna",
         idiomas: []
@@ -649,8 +651,7 @@ let libroDeReglasBasicas = {
         { id: "represalia", nombre: "Represalia", nivelClase: 14, descripcionResum: "Puedes atacar con tu reacción a quien te dañe cuerpo a cuerpo.", descripcion: `Cuando una criatura a 5 pies te daña, puedes usar tu reacción para hacer un ataque cuerpo a cuerpo contra ella.` }
       ] }]
     },
-    {
-      id: "bardo",
+    { id: "bardo",
       nombre: "Bardo",
       descripcion: "Artista y lanzador de conjuros que inspira aliados, confunde enemigos y usa el conocimiento como herramienta de aventura.",
       dadoDeGolpe: 8,
@@ -682,9 +683,7 @@ let libroDeReglasBasicas = {
         { id: "habilidad_sin_igual", nombre: "Habilidad sin igual", nivelClase: 14, descripcionResum: "Puedes gastar Inspiración bárdica para sumarla a una prueba de característica propia.", descripcion: `Cuando haces una prueba de característica, puedes gastar un dado de Inspiración bárdica y sumarlo antes de conocer el resultado definitivo.` }
       ] }]
     },
-
-    {
-      id: "brujo",
+    { id: "brujo",
       nombre: "Brujo",
       descripcion: "Lanzador de pacto que obtiene magia y secretos arcanos mediante un vínculo con un patrón sobrenatural.",
       dadoDeGolpe: 8,
@@ -706,8 +705,7 @@ let libroDeReglasBasicas = {
         { id: "lanzar_infierno", nombre: "Lanzar al infierno", nivelClase: 14, descripcionResum: "Una vez por descanso puedes enviar temporalmente a una criatura dañada a una experiencia infernal.", descripcion: `Cuando impactas a una criatura, puedes hacer que desaparezca brevemente y sufra daño psíquico por una visión infernal.` }
       ] }]
     },
-    {
-      id: "clerigo",
+    { id: "clerigo",
       nombre: "Clérigo",
       descripcion: "Canalizador de magia divina que actúa como intermediario entre deidades, ideales sagrados y el mundo mortal.",
       dadoDeGolpe: 8,
@@ -730,8 +728,7 @@ let libroDeReglasBasicas = {
         { id: "curacion_suprema", nombre: "Curación suprema", nivelClase: 17, descripcionResum: "Tus dados de curación con conjuros sanan el máximo posible.", descripcion: `Cuando un conjuro tuyo restaura puntos de golpe, los dados de curación cuentan como si hubieran obtenido su resultado máximo.` }
       ] }]
     },
-    {
-      id: "druida",
+    { id: "druida",
       nombre: "Druida",
       descripcion: "Guardián de la magia natural que invoca fuerzas elementales y adopta formas animales.",
       dadoDeGolpe: 8,
@@ -755,8 +752,7 @@ let libroDeReglasBasicas = {
         { id: "santuario_naturaleza", nombre: "Santuario de la naturaleza", nivelClase: 14, descripcionResum: "Bestias y plantas tienen dificultades para atacarte.", descripcion: `Las criaturas naturales sienten tu vínculo con la naturaleza y deben superar una salvación para atacarte.` }
       ] }]
     },
-    {
-      id: "explorador",
+    { id: "explorador",
       nombre: "Explorador",
       descripcion: "Especialista de frontera que combina rastreo, supervivencia, armas y magia natural.",
       dadoDeGolpe: 10,
@@ -784,8 +780,7 @@ let libroDeReglasBasicas = {
         { id: "defensa_cazador_superior", nombre: "Defensa superior del cazador", nivelClase: 15, descripcionResum: "Elige una defensa avanzada.", descripcion: `Obtienes una opción defensiva superior para resistir o evitar daño.` }
       ] }]
     },
-    {
-      id: "guerrero",
+    { id: "guerrero",
       nombre: "Guerrero",
       descripcion: "Maestro versátil de armas, armaduras y tácticas de combate.",
       dadoDeGolpe: 10,
@@ -808,8 +803,7 @@ let libroDeReglasBasicas = {
         { id: "superviviente", nombre: "Superviviente", nivelClase: 18, descripcionResum: "Regeneras PG al inicio del turno si estás herido pero no a 0.", descripcion: `Si tienes pocos puntos de golpe pero no estás a 0, recuperas puntos al inicio de tus turnos.` }
       ] }]
     },
-    {
-      id: "hechicero",
+    { id: "hechicero",
       nombre: "Hechicero",
       descripcion: "Lanzador de conjuros con magia innata que moldea sus conjuros mediante poder interior.",
       dadoDeGolpe: 6,
@@ -831,8 +825,7 @@ let libroDeReglasBasicas = {
         { id: "presencia_draconica", nombre: "Presencia dracónica", nivelClase: 18, descripcionResum: "Puedes gastar puntos de hechicería para asustar o encantar criaturas cercanas.", descripcion: `Irradias majestad dracónica para provocar temor o fascinación en criaturas cercanas.` }
       ] }]
     },
-    {
-      id: "mago",
+    { id: "mago",
       nombre: "Mago",
       descripcion: "Estudioso arcano que prepara conjuros desde un libro y domina fórmulas mágicas complejas.",
       dadoDeGolpe: 6,
@@ -854,8 +847,7 @@ let libroDeReglasBasicas = {
         { id: "sobrecargar", nombre: "Sobrecargar", nivelClase: 14, descripcionResum: "Puedes maximizar daño de conjuros de evocación de nivel bajo con riesgo al repetirlo.", descripcion: `Puedes maximizar el daño de ciertos conjuros de evocación; usarlo repetidamente antes de descansar te daña.` }
       ] }]
     },
-    {
-      id: "monje",
+    { id: "monje",
       nombre: "Monje",
       descripcion: "Combatiente disciplinado que canaliza ki para defenderse, moverse y golpear con precisión.",
       dadoDeGolpe: 8,
@@ -897,8 +889,7 @@ let libroDeReglasBasicas = {
         { id: "palma_temblorosa", nombre: "Palma temblorosa", nivelClase: 17, descripcionResum: "Puedes implantar vibraciones letales con un impacto sin armas.", descripcion: `Gastando ki al impactar sin armas, dejas vibraciones que después puedes activar para dañar gravemente al objetivo.` }
       ] }]
     },
-    {
-      id: "paladin",
+    { id: "paladin",
       nombre: "Paladín",
       descripcion: "Campeón juramentado que combina armas, armaduras, magia divina y auras protectoras.",
       dadoDeGolpe: 10,
@@ -926,12 +917,22 @@ let libroDeReglasBasicas = {
         { id: "aureola_sagrada", nombre: "Aureola sagrada", nivelClase: 20, descripcionResum: "Puedes emitir luz sagrada que daña enemigos y mejora tus salvaciones contra sus conjuros.", descripcion: `Como acción, manifiestas una aureola de luz que daña criaturas hostiles cercanas y te protege de sus conjuros.` }
       ] }]
     },
-    {
-      id: "picaro",
+    { id: "picaro",
       nombre: "Pícaro",
       descripcion: "Especialista ágil en sigilo, precisión y resolución ingeniosa de problemas.",
       dadoDeGolpe: 8,
-      competencias: { salvaciones: ["DES", "INT"], habilidades: [], armas: { descripcion: "Armas simples, ballestas de mano, espadas largas, estoques y espadas cortas", competencias: ["armasSimples", "ballestaMano", "espadaLarga", "estoque", "espadaCorta"] }, armaduras: { descripcion: "Armaduras ligeras", competencias: ["ligera"] }, herramientas: "Herramientas de ladrón", idiomas: [] },
+      competencias: {
+        salvaciones: ["DES", "INT"],
+        habilidades: [],
+        armas: {
+          descripcion: "Armas simples, ballestas de mano, espadas largas, estoques y espadas cortas",
+          competencias: ["armasSimples", "ballestaMano", "espadaLarga", "estoque", "espadaCorta"]
+        },
+        armaduras: {
+          descripcion: "Armaduras ligeras", competencias: ["ligera"]
+        },
+        herramientas: "Herramientas de ladrón",
+        idiomas: [] },
       rasgos: [
         { id: "competencias_iniciales_picaro", nombre: "Competencias iniciales", nivelClase: 1, descripcionResum: "Salvaciones de Destreza e Inteligencia, armaduras ligeras, armas de pícaro, herramientas de ladrón y cuatro habilidades.", descripcion: `Escoge cuatro habilidades entre Acrobacias, Atletismo, Engañar, Perspicacia, Intimidación, Investigación, Percepción, Interpretación, Persuasión, Juego de Manos y Sigilo.`, selecciones: [{ id: "habilidades_picaro_n1", nombre: "Habilidades de Pícaro", tipo: "habilidad", cantidadSeleccionable: 4, descripcion: "Escoge cuatro habilidades.", opciones: [{ id: "acrobacias", nombre: "Acrobacias" }, { id: "atletismo", nombre: "Atletismo" }, { id: "enganar", nombre: "Engañar" }, { id: "perspicacia", nombre: "Perspicacia" }, { id: "intimidacion", nombre: "Intimidación" }, { id: "investigacion", nombre: "Investigación" }, { id: "percepcion", nombre: "Percepción" }, { id: "interpretacion", nombre: "Interpretación" }, { id: "persuasion", nombre: "Persuasión" }, { id: "juego_de_manos", nombre: "Juego de Manos" }, { id: "sigilo", nombre: "Sigilo" }] }] },
         { id: "pericia_picaro", nombre: "Pericia", nivelClase: 1, descripcionResum: "Elige dos competencias para duplicar tu bonificador de competencia.", descripcion: `Elige dos competencias entre habilidades y herramientas de ladrón; duplicas tu bonificador de competencia para ellas. Más adelante eliges otras dos.` },

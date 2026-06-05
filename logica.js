@@ -1901,7 +1901,7 @@ function renderCompetencias() {
   ];
 
   panelVentanas.innerHTML = `
-    <h2 class="titulo-panel">COMPETENCIAS</h2>
+    <h3 class="titulo-panel">COMPETENCIAS</h3>
 
     <div class="comp-bloques">
 
@@ -2011,8 +2011,8 @@ function renderRasgos() {
             .join("");
     };
     let html = `
-        <h2 class="titulo-panel">RASGOS Y ATRIBUTOS</h2>
-        <div class="rasgos-contenedor-scroll" style="max-height: 75vh; overflow-y: auto; padding-right: 5px;">
+        <h3 class="titulo-panel">RASGOS Y ATRIBUTOS</h3>
+        <div class="rasgos-contenedor-scroll" style="overflow-y: auto; padding-right: 5px;">
     `;
 
     // ==========================================
@@ -2331,7 +2331,7 @@ function toggleOpcionSeleccionBuild(indice, opcionId) {
 function renderHechizos() {
   // Placeholder — podés expandir esto con tu lista de hechizos
   panelVentanas.innerHTML = `
-    <h2 class="titulo-panel">Conjuros</h2>
+    <h3 class="titulo-panel">CONJUROS</h3>
     <p style="color:#6b5a53; text-align:center; margin-top:20px;">
       Esta sección mostrará los conjuros conocidos del personaje.<br>
       <small>Próximamente: Clases lanzadoras de Conjuros.</small>
@@ -2457,7 +2457,7 @@ function abrirPopupEquipo(titulo, contenidoHtml) {
 
   contenido.innerHTML = `
     <div class="equipo-popup-grid">
-      <h3 style="color:#5a4035; margin:0 34px 8px 0; font-family:Georgia, serif;">${textoSeguro(titulo)}</h3>
+      ${titulo}
       ${contenidoHtml}
     </div>
   `;
@@ -3161,8 +3161,15 @@ function renderAtaquesCombate() {
 
 function abrirPopupAtaqueEquipo(itemId) {
   const arma = obtenerArmasEquipadasCombate().find(item => item.id === itemId);
+  const config = CONFIG_EQUIPO[arma.tipo] || CONFIG_EQUIPO.equipo;
+
   if (!arma) return;
-  abrirPopupEquipo(`Ataque: ${arma.nombre}`, renderTarjetaEquipo({ ...arma, editable: false }));
+  abrirPopupEquipo(`
+        <summary>
+          ${textoSeguro(arma.nombre)}
+          <span class="equipo-tipo">${textoSeguro(config.singular)}${arma.subtipo ? ` · ${textoSeguro(arma.subtipo)}` : ""}</span>
+        </summary>`,
+        renderTarjetaEquipo({ ...arma, editable: false }));
 }
 
 function renderFilaDetalleEquipo(titulo, valor) {
@@ -3178,7 +3185,7 @@ function renderFilaDetalleEquipo(titulo, valor) {
 function renderCuadriculaDetallesEquipo(item, config) {
   const filas = [
     renderFilaDetalleEquipo("Precio", item.precio || "—"),
-    renderFilaDetalleEquipo("Tipo", `${config.singular}${item.subtipo ? ` / ${item.subtipo}` : ""}`)
+    renderFilaDetalleEquipo("Tipo", `${config.singular}${item.subtipo ? ` ${item.subtipo}` : ""}`)
   ];
 
   if (item.tipo === "arma") {
@@ -3229,10 +3236,7 @@ function renderTarjetaEquipo(item) {
   const config = CONFIG_EQUIPO[item.tipo] || CONFIG_EQUIPO.equipo;
 
   return `
-    <article class="equipo-item ${item.editable && ["arma", "armadura"].includes(item.tipo) && !item.equipado ? "equipo-item-desequipado" : ""}">      <div class="equipo-item-cabecera">
-        <strong>${textoSeguro(item.nombre)}</strong>
-        <span class="equipo-tipo">${textoSeguro(config.singular)}${item.subtipo ? ` · ${textoSeguro(item.subtipo)}` : ""}</span>
-      </div>
+    <article class="equipo-item ${item.editable && ["arma", "armadura"].includes(item.tipo) && !item.equipado ? "equipo-item-desequipado" : ""}">
       <p class="equipo-descripcion">${textoSeguro(item.descripcion || "Sin descripción.")}</p>
       ${renderCuadriculaDetallesEquipo(item, config)}
       <p class="equipo-efectos"><strong>Efectos:</strong> ${textoSeguro(item.efectos || "—")}</p>
@@ -3243,10 +3247,24 @@ function renderTarjetaEquipo(item) {
   `;
 }
 
+function renderResumenEquipo(item) {
+  const config = CONFIG_EQUIPO[item.tipo] || CONFIG_EQUIPO.equipo;
+  const contenido = renderTarjetaEquipo(item);
+  return `
+    <details class="equipo-resumen ${item.editable && ["arma", "armadura"].includes(item.tipo) && !item.equipado ? "equipo-item-desequipado" : ""}">
+      <summary>
+        ${textoSeguro(item.nombre)}
+        <span class="equipo-tipo">${textoSeguro(config.singular)}${item.subtipo ? ` · ${textoSeguro(item.subtipo)}` : ""}</span>
+      </summary>
+      ${contenido}
+    </details>
+  `;
+}
+
 function renderSeccionEquipo(tipo, items) {
   const config = CONFIG_EQUIPO[tipo];
   const contenido = items.length
-    ? items.map(renderTarjetaEquipo).join("")
+    ? items.map(renderResumenEquipo).join("")
     : `<p class="equipo-vacio">No hay ${config.titulo.toLowerCase()} registrados.</p>`;
 
   return `
@@ -3298,11 +3316,11 @@ function renderEquipo() {
   };
 
   panelVentanas.innerHTML = `
-    <h2 class="titulo-panel">EQUIPO</h2>
+    <h3 class="titulo-panel">EQUIPO</h3>
     <div class="equipo-dashboard">
       <div class="equipo-cajas-centrales">
         <section class="equipo-caja-central">
-          <h3>Monedas</h3>
+          <h4>Monedas</h4>
           <div class="monedas-grid">
             ${MONEDAS_DND.map(moneda => `
               <button class="moneda-btn" type="button" onclick="abrirPopupMoneda('${moneda.id}')">
@@ -3312,8 +3330,8 @@ function renderEquipo() {
             `).join("")}
           </div>
         </section>
-        <section class="equipo-caja-central">
-          <h3>Equipamento</h3>
+        <section class="equipo-caja-central-lista">
+          <h4>Equipamento</h4>
           ${renderSeccionEquipo("arma", itemsPorTipo.arma)}
           ${renderSeccionEquipo("armadura", itemsPorTipo.armadura)}
           ${renderSeccionEquipo("equipo", itemsPorTipo.equipo)}
@@ -3989,7 +4007,7 @@ function actualizarResumenPersonaje() {
     .join(" / ") || "Clase 0";
 
   document.getElementById("nombre-personaje").innerText = personajeActual.nombre || "Sin nombre";
-  document.getElementById("info-personaje").innerText = `${razaNombre}, ${clasesTexto} · Nivel ${personajeActual.nivel}`;
+  document.getElementById("info-personaje").innerText = `${razaNombre} · ${clasesTexto}`;
   actualizarDetalleCompetencia();
   document.getElementById("BC").innerText = formatoValor(calcularBonificadorCompetencia());  if (selectorNivelPersonaje) selectorNivelPersonaje.value = String(personajeActual.nivel);
 }
