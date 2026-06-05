@@ -29,23 +29,23 @@
     <button id="btnCambiarPersonaje" class="boton-cambiar-personaje oculto" type="button">&lt; Cambiar personaje</button>
     <div class="panel-Personaje cabecera-personaje oculto" id="cabeceraFicha">
         <div class="personaje-principal">
-            <div class="datos-personaje">
-                <h2 class="titulo-nombre" id="nombre-personaje"> [Nombre]</h2>
-                <p class="Info-personaje" id="info-personaje">[Raza], [Clase] [Nivel]</p>
+            <h1 class="titulo-nombre" id="nombre-personaje"> [Nombre]</h1>
+            <p class="Info-personaje" id="info-personaje">[Raza], [Clase] [Nivel]</p>
+        </div>
+        <div class= "controles-principal">
+            <div class="controles-personaje">
+                <select id="selectorNivelPersonaje" aria-label="Seleccionar nivel del personaje"></select>
             </div>
-        </div>
-        <div class="controles-personaje">
-            <select id="selectorNivelPersonaje" aria-label="Seleccionar nivel del personaje"></select>
-        </div>
-        <div class="acciones-personaje">
-            <button id="btnVistaBuild" type="button">Build</button>
-            <button id="btnVistaPersonaje" type="button" class="vista-activa">Personaje</button>
-        </div>
+            <div class="acciones-personaje">
+                <button id="btnVistaBuild" type="button">Build</button>
+                <button id="btnVistaPersonaje" type="button" class="vista-activa">Personaje</button>
+            </div>
+        </div>  
     </div>
     <div class="layout-principal oculto" id="vistaPersonaje">
         <div class="columna-izquierda">
             <div class="panel-estadisticas">
-                <h2 class="titulo-panel">CARACTERISTICAS</h2>
+                <h3 class="titulo-panel">CARACTERISTICAS</h3>
 
                 <div class="fila-stats">
                     <div class="caja-stat clickable" data-popup-key="FUE">
@@ -82,26 +82,27 @@
 
                 <div class="fila-extra">
                     <div class="caja-extra clickable" data-popup-key="PG">
-                        <p class="titulo-extra">Puntos de Golpe</p>
+                        <p class="titulo-extra">PG</p>
                         <p class="modificador-stat" id="PG">10</p>
                     </div>
                     <div class="caja-extra clickable" data-popup-key="Velocidad">
-                        <p class="titulo-extra">Velocidad</p>
+                        <p class="titulo-extra">Vel.</p>
                         <p class="modificador-stat" id="Vel">10</p>
-                        <p class="valor-stat">Pies</p>
+                        <p class="subtitulo-extra">Pies</p>
                     </div>
                     <div class="caja-extra clickable" data-popup-key="Iniciativa">
-                        <p class="titulo-extra">Iniciativa</p>
+                        <p class="titulo-extra">Ini.</p>
                         <p class="modificador-stat" id="Ini">+1</p>
                     </div>
                     <div class="caja-extra clickable" data-popup-key="CA">
-                        <p class="titulo-extra">Clase Armadura</p>
+                        <p class="titulo-extra">CA</p>
                         <p class="modificador-stat" id="CA">+0</p>
-                        <p class="valor-stat" id="armadura">[Armadura]</p>
+                        <p class="subtitulo-extra" id="armadura">[Armadura]</p>
                     </div>
                     <div class="caja-extra clickable" data-popup-key="Competencia">
-                        <p class="titulo-extra">BF</p>
+                        <p class="titulo-extra">BC</p>
                         <p class="modificador-stat" id="BC">+2</p>
+                        <p class="subtitulo-extra">Hola</p>
                     </div>
                 </div>
             </div>
@@ -162,6 +163,19 @@
         <div class="columna-derecha">
             <div class="fila-ventanas">
                 <button id="competenciasBtn" type="button">Competencias</button>
+                <script>
+                    function actualizarTabs() {
+                    const columnaderecha = document.querySelector(".columna-derecha");
+                    const width = columnaderecha.offsetWidth;
+                    const mobile = width < 600;
+
+                    document.getElementById("competenciasBtn").textContent =
+                        mobile ? "Comp." : "Competencias";
+                    }
+
+                    window.addEventListener("resize", actualizarTabs);
+                    actualizarTabs();
+                </script>
                 <button id="rasgosBtn" type="button">Rasgos</button>
                 <button id="hechizosBtn" type="button">Conjuros</button>
                 <button id="equipoBtn" type="button">Equipo</button>
